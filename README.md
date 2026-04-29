@@ -114,3 +114,4 @@ Always verify on your hardware wallet's screen what you are signing. Keylay rela
 - App: [app.keylay.org](https://app.keylay.org)
 - GitHub: [github.com/keylaybtc](https://github.com/keylaybtc)
 - X: [@keylaybtc](https://x.com/keylaybtc)
+- Nostr: [npub1amg…qns](https://njump.me/npub1amgnj87xwh9t9zd9u0vy3tw0fjxumt8ajx858ej6qdmm3pj4qnsskjj03e)
