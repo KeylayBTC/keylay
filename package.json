@@ -1,0 +1,25 @@
+{
+  "name": "keylay",
+  "version": "0.6.0",
+  "description": "Encrypted QR relay for remote multisig Bitcoin coordination",
+  "homepage": "https://keylay.org",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/keylaybtc/keylay.git"
+  },
+  "bugs": {
+    "url": "https://github.com/keylaybtc/keylay/issues"
+  },
+  "license": "MIT",
+  "author": "keylaybtc <contact@keylay.org>",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

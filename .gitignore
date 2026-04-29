@@ -1,0 +1,35 @@
+# Dependencies — populated by `npm install`, never committed
+node_modules/
+
+# Logs
+*.log
+server.log
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local environment
+.env
+.env.local
+
+# Playwright — install locally in tests/, never commit
+tests/node_modules/
+tests/package-lock.json
+
+# Playwright generated output
+test-results/
+playwright-report/
+
+# Backups and scratch files
+backups/
+*.bak
+*.bak-*
+
+# npm lock file — one dependency, lock adds noise
+package-lock.json
