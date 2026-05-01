@@ -34,6 +34,26 @@
     #qrBox { display: none; margin-top: 20px; }
     canvas { margin: auto; display: block; }
     #qrCanvas, #qrDisplayImg { max-width: 100%; height: auto; aspect-ratio: 1 / 1; }
+    #sessionWarning {
+      display: none;
+      background: #e67e22;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 5px;
+      margin: 8px 0;
+      font-size: 14px;
+    }
+    #sessionWarning button {
+      margin-left: 10px;
+      padding: 4px 12px;
+      font-size: 13px;
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.5);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #sessionWarning button:hover { background: rgba(255,255,255,0.35); }
     /* roleStatus styled inline on the element */
     #qrText { margin-top: 1em; font-family: monospace; }
     video { max-width: 100%; }
@@ -414,7 +434,10 @@
 </head>
 <body>
   <h2>Keylay</h2>
-  
+
+  <!-- Compatibility warning — shown only when crypto.subtle is unavailable or X25519 unsupported -->
+  <div id="compatWarning" style="display:none; background:#7c4a00; color:#ffe7b8; border-radius:6px; padding:12px 16px; margin:0 0 16px; font-size:14px; text-align:center; line-height:1.5;"></div>
+
   <!-- Connection Status Indicator -->
   <div id="connectionStatus"></div>
   
@@ -433,6 +456,9 @@
   
   <!-- Main App (shown after connecting) -->
   <div id="mainApp">
+    <div id="sessionWarning">
+      <span id="sessionWarningText"></span><button id="keepAliveBtn" style="display:none;">Keep session alive</button>
+    </div>
     <div>Channel: <span id="currentCode"></span><button id="copyCodeBtn" title="Copy channel code" style="background:none;border:none;cursor:pointer;font-size:11px;margin-left:6px;padding:2px 6px;color:#888;font-variant:small-caps;letter-spacing:0.05em;">[copy]</button></div>
     <button id="leaveChannelBtn" class="btn btn-secondary" style="font-size: 12px; padding: 5px 10px;">Leave Channel</button>
     
@@ -11410,6 +11436,21 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
     let qrCanvas, qrBox, qrText, scanStatus;
     let serverType = 'unknown'; // 'local', 'cloud', or 'custom'
 
+    // Reconnect state
+    let isReconnecting = false;
+    let reconnectAttempts = 0;
+    let reconnectTimer = null;
+    let lastServerUrl = '';
+    let lastServerType = '';
+    let sessionStart = 0;        // set on first connect; persists across reconnects for 60-min cap
+
+    // Deliberate-exit flag — distinguishes click-leave from transient WS close
+    let userInitiatedLeave = false;
+
+    // Timeout warning timers
+    let warnTimer = null;        // fires 2 min before idle timeout
+    let sessionWarnTimer = null; // fires 2 min before 60-min cap
+
     // Handshake state machine
     let handshakeState = 'IDLE'; // 'IDLE' | 'HELLO_SENT' | 'ACTIVE'
     let lastRejectionMessage = '';  // Set when server sends status before handshake is ACTIVE
@@ -11481,9 +11522,20 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
     // keys don't linger in memory past the configured window.
     function bumpIdleTimer() {
       if (idleTimer) clearTimeout(idleTimer);
+      if (warnTimer) clearTimeout(warnTimer);
+      hideSessionWarning();
+
+      // Warn 2 minutes before idle timeout fires
+      const IDLE_WARN_LEAD = 2 * 60 * 1000;
+      warnTimer = setTimeout(() => {
+        showSessionWarning('Session ends in 2 minutes due to inactivity.', true);
+      }, IDLE_TIMEOUT_MS - IDLE_WARN_LEAD);
+
       idleTimer = setTimeout(() => {
         if (DEBUG) console.log('⏱️ Idle timeout — wiping session keys');
+        hideSessionWarning();
         sessionIdleTimedOut = true;
+        cancelReconnect();
         // Close the socket first so the server-side timer agrees with us,
         // then leaveChannel() wipes sessionKey / ephemeralKeyPair / hmacKey /
         // counters and resets the UI.
@@ -11491,8 +11543,15 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
           try { ws.close(1000, 'Client idle timeout'); } catch {}
         }
         // leaveChannel is invoked via ws.onclose; if the socket is already
-        // gone, call it directly.
-        if (!ws || ws.readyState !== WebSocket.OPEN) leaveChannel();
+        // gone, call it directly — code is intentionally cleared (security).
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          leaveChannel();
+          const joinStatus = document.getElementById('joinStatus');
+          if (joinStatus) {
+            joinStatus.textContent = 'Session idle too long — keys wiped';
+            joinStatus.style.color = '#e74c3c';
+          }
+        }
       }, IDLE_TIMEOUT_MS);
     }
 
@@ -11619,21 +11678,27 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
         thisWs.onopen = async () => {
           clearTimeout(connectionTimeout);
           if (!isCurrent()) return; // superseded — let the new socket own state
+
+          // Mark reconnect complete if this was a retry
+          const wasReconnecting = isReconnecting;
+          cancelReconnect();
+
           serverType = type;
-          if (DEBUG) console.log(`✅ Connected to ${type} server`);
+          lastServerUrl = url;
+          lastServerType = type;
+          if (DEBUG) console.log(`✅ Connected to ${type} server (reconnect=${wasReconnecting})`);
           updateConnectionStatus(type === 'local' ? 'local' : 'cloud');
 
           // Join the channel using the derived hash (server never sees raw code)
           ws.send(JSON.stringify({ type: "join", code: channelHash }));
 
-          // Keepalive ping every 25s — prevents proxy/server idle timeout.
-          // After SESSION_LIMIT_MS (60 minutes) the session is hard-closed.
-          const sessionStart = Date.now();
-          sessionTimedOut = false;
-          sessionIdleTimedOut = false;
+          // Keepalive ping every 25s. Checks against sessionStart which persists
+          // across reconnects so the 60-min cap applies to the whole session,
+          // not each individual WS lifetime.
           keepaliveInterval = setInterval(() => {
             if (!ws || ws.readyState !== WebSocket.OPEN) return;
             if (Date.now() - sessionStart >= SESSION_LIMIT_MS) {
+              hideSessionWarning();
               sessionTimedOut = true;
               ws.close(1000, 'Session timeout');
               return;
@@ -11641,16 +11706,26 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
             ws.send(JSON.stringify({ type: "ping" }));
           }, KEEPALIVE_INTERVAL_MS);
 
-          // Start the idle timer (wipes keys on 15 min of no data activity).
+          // Reset idle timer on every (re)connect — user is clearly present.
           bumpIdleTimer();
 
-          // Keys are pre-generated in joinChannel — start the handshake immediately
+          // Keys are pre-generated in joinChannel or doReconnectAttempt
           broadcastHello();
 
-          // Show main app
-          document.getElementById('channelSetup').style.display = 'none';
-          document.getElementById('mainApp').style.display = 'block';
-          document.getElementById('currentCode').textContent = channelCode.match(/.{1,4}/g).join(' \u00B7 ');
+          if (!wasReconnecting) {
+            // First connection — record session start, arm 60-min warning, show app.
+            sessionStart = Date.now();
+            sessionTimedOut = false;
+            sessionIdleTimedOut = false;
+            if (sessionWarnTimer) clearTimeout(sessionWarnTimer);
+            sessionWarnTimer = setTimeout(() => {
+              showSessionWarning('Session ends in 2 minutes — the 60-minute limit is reached. Note your session code.', false);
+            }, SESSION_LIMIT_MS - 2 * 60 * 1000);
+
+            document.getElementById('channelSetup').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            document.getElementById('currentCode').textContent = channelCode.match(/.{1,4}/g).join(' \u00B7 ');
+          }
         };
         
         thisWs.onerror = (error) => {
@@ -11672,25 +11747,50 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
             return;
           }
           clearInterval(keepaliveInterval);
-          if (idleTimer) clearTimeout(idleTimer);
           keepaliveInterval = null;
-          idleTimer = null;
           console.log("WebSocket closed:", event.code, event.reason);
-          if (document.getElementById('mainApp').style.display === 'block') {
-            const lastCode = channelCode;
-            leaveChannel();
-            const codeInput = document.getElementById('codeInput');
-            if (codeInput && lastCode) codeInput.value = lastCode;
-            const joinStatus = document.getElementById('joinStatus');
-            if (joinStatus) {
-              joinStatus.textContent = sessionIdleTimedOut
-                ? 'Session idle too long — keys wiped. Enter the session code to start a new session'
-                : sessionTimedOut
-                  ? 'Session reached the 60-minute limit — enter the session code to start a new session'
-                  : lastRejectionMessage
-                  ? lastRejectionMessage + ' — enter the session code to try again'
-                  : 'Connection lost — enter the session code to rejoin';
-              joinStatus.style.color = '#e74c3c';
+
+          // Three distinct close conditions with different UX:
+          //  1. Deliberate / timed-out: full teardown, code cleared or kept per policy.
+          //  2. Transient (network blip): preserve session state, attempt reconnect.
+          const isDeliberate = userInitiatedLeave || sessionTimedOut || sessionIdleTimedOut;
+
+          if (isDeliberate) {
+            // Stop idle + warn timers — session is definitively over.
+            if (idleTimer) clearTimeout(idleTimer);
+            if (warnTimer) clearTimeout(warnTimer);
+            idleTimer = null;
+            warnTimer = null;
+            hideSessionWarning();
+
+            if (document.getElementById('mainApp').style.display === 'block') {
+              const lastCode = channelCode;
+              // Code policy: keep for 60-min cap and user-initiated leave; clear for idle timeout.
+              const keepCode = sessionTimedOut || userInitiatedLeave;
+              leaveChannel();
+              const codeInput = document.getElementById('codeInput');
+              if (keepCode && lastCode && codeInput) codeInput.value = lastCode;
+              const joinStatus = document.getElementById('joinStatus');
+              if (joinStatus) {
+                joinStatus.textContent = sessionIdleTimedOut
+                  ? 'Session idle too long — keys wiped'
+                  : sessionTimedOut
+                    ? 'Session reached the 60-minute limit — enter the session code to start a new session'
+                    : lastRejectionMessage
+                    ? lastRejectionMessage + ' — enter the session code to try again'
+                    : '';
+                joinStatus.style.color = '#e74c3c';
+              }
+            }
+            userInitiatedLeave = false;
+          } else {
+            // Transient disconnect — preserve session state, attempt background reconnect.
+            // idleTimer intentionally NOT cleared: if the user is away long enough for it
+            // to fire (15 min), that is a genuine idle and should trigger a full teardown.
+            ws = null;
+            if (document.getElementById('mainApp').style.display === 'block') {
+              updateConnectionStatus('connecting', 'Reconnecting…');
+              scheduleReconnect();
             }
           }
         };
@@ -11704,12 +11804,18 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
     }
     
     function leaveChannel() {
+      cancelReconnect();
+      hideSessionWarning();
       clearInterval(keepaliveInterval);
       clearInterval(helloRetryInterval);
       if (idleTimer) clearTimeout(idleTimer);
+      if (warnTimer) clearTimeout(warnTimer);
+      if (sessionWarnTimer) clearTimeout(sessionWarnTimer);
       keepaliveInterval = null;
       helloRetryInterval = null;
       idleTimer = null;
+      warnTimer = null;
+      sessionWarnTimer = null;
       if (ws) {
         ws.close();
         ws = null;
@@ -11729,15 +11835,18 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       recvCounter = -1;
       helloProcessing = false;
       lastRejectionMessage = '';
+      sessionStart = 0;
 
       isSender = false;
       serverType = 'unknown';
-      
-      // Reset UI
+      lastServerUrl = '';
+      lastServerType = '';
+
+      // Reset UI — intentionally does NOT touch codeInput; callers decide
+      // whether to clear or preserve the session code.
       document.getElementById('channelSetup').style.display = 'block';
       document.getElementById('mainApp').style.display = 'none';
       document.getElementById('connectionStatus').style.display = 'none';
-      document.getElementById('codeInput').value = '';
       const joinStatus = document.getElementById('joinStatus');
       if (joinStatus) {
         joinStatus.textContent = 'Share this code with your collaborator to begin secure coordination.';
@@ -11752,6 +11861,96 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       // Stop any ongoing scans/animations
       stopScanning();
       stopAnimation();
+    }
+
+    // ============================================
+    // RECONNECT
+    // ============================================
+
+    function cancelReconnect() {
+      if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+      isReconnecting = false;
+      reconnectAttempts = 0;
+    }
+
+    function scheduleReconnect() {
+      if (isReconnecting) return;
+      isReconnecting = true;
+      reconnectAttempts = 0;
+      doReconnectAttempt();
+    }
+
+    async function doReconnectAttempt() {
+      if (!isReconnecting || !channelCode || sessionIdleTimedOut || sessionTimedOut || userInitiatedLeave) {
+        cancelReconnect();
+        return;
+      }
+
+      const MAX_ATTEMPTS = 10; // ~5 min with backoff
+      const DELAYS = [1000, 2000, 4000, 8000, 16000, 30000];
+      const delay = DELAYS[Math.min(reconnectAttempts, DELAYS.length - 1)];
+
+      if (reconnectAttempts >= MAX_ATTEMPTS) {
+        isReconnecting = false;
+        // Give up — show manual rejoin prompt but keep the code
+        if (document.getElementById('mainApp').style.display === 'block') {
+          const lastCode = channelCode;
+          leaveChannel();
+          const codeInput = document.getElementById('codeInput');
+          if (codeInput && lastCode) codeInput.value = lastCode;
+          const joinStatus = document.getElementById('joinStatus');
+          if (joinStatus) {
+            joinStatus.textContent = 'Could not reconnect — enter the session code to rejoin';
+            joinStatus.style.color = '#e74c3c';
+          }
+        }
+        return;
+      }
+
+      reconnectAttempts++;
+      updateConnectionStatus('connecting', `Reconnecting… (${reconnectAttempts}/${MAX_ATTEMPTS})`);
+
+      reconnectTimer = setTimeout(async () => {
+        if (!isReconnecting) return;
+        try {
+          // Fresh ephemeral key pair — new DH handshake, new session key
+          ephemeralKeyPair = await generateEphemeralKeyPair();
+          myPublicKeyB64 = await exportPublicKey(ephemeralKeyPair);
+          handshakeState = 'IDLE';
+          messageBuffer = [];
+          sendCounter = 0;
+          recvCounter = -1;
+          helloProcessing = false;
+          clearInterval(helloRetryInterval);
+          helloRetryInterval = null;
+        } catch (e) {
+          console.error('Reconnect key gen failed:', e);
+          doReconnectAttempt();
+          return;
+        }
+        const url = lastServerUrl || WS_CLOUD_URL;
+        const type = lastServerType || 'cloud';
+        connectToServer(url, type, () => { doReconnectAttempt(); });
+      }, delay);
+    }
+
+    // ============================================
+    // SESSION WARNING BANNER
+    // ============================================
+
+    function showSessionWarning(message, showKeepAlive) {
+      const el = document.getElementById('sessionWarning');
+      const textEl = document.getElementById('sessionWarningText');
+      const btn = document.getElementById('keepAliveBtn');
+      if (!el || !textEl || !btn) return;
+      textEl.textContent = message;
+      btn.style.display = showKeepAlive ? 'inline-block' : 'none';
+      el.style.display = 'block';
+    }
+
+    function hideSessionWarning() {
+      const el = document.getElementById('sessionWarning');
+      if (el) el.style.display = 'none';
     }
 
     // ============================================
@@ -12681,6 +12880,32 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
     // ============================================
 
     document.addEventListener("DOMContentLoaded", () => {
+      // Compat check — runs immediately so the user sees the banner before trying anything.
+      // Two distinct failure modes:
+      //   1. Non-secure context (http:// or file://): crypto.subtle is undefined by spec.
+      //      iOS/Safari are especially strict about this.
+      //   2. Old browser: secure context but X25519 not yet implemented.
+      (async () => {
+        const banner = document.getElementById('compatWarning');
+        if (!banner) return;
+        if (!window.isSecureContext) {
+          banner.innerHTML =
+            '⚠️ Keylay requires a secure context to enable encryption. ' +
+            'Use the hosted app at <a href="https://app.keylay.org" style="color:#ffe7b8;">app.keylay.org</a>, ' +
+            'or serve the file locally via <code style="background:rgba(0,0,0,0.25);padding:1px 5px;border-radius:3px;">python3 -m http.server 8081</code> ' +
+            'and open <code style="background:rgba(0,0,0,0.25);padding:1px 5px;border-radius:3px;">http://localhost:8081</code>. ' +
+            'Opening as a local file (file://) or over plain http:// is not supported.';
+          banner.style.display = 'block';
+          return;
+        }
+        if (!(await checkX25519Support())) {
+          banner.textContent =
+            '⚠️ Your browser does not support X25519 key exchange. ' +
+            'Keylay requires Chrome 113+, Firefox 128+, or Safari (iOS 17.4+ / macOS 14.4+).';
+          banner.style.display = 'block';
+        }
+      })();
+
       qrCanvas = document.getElementById("qrCanvas");
       qrBox = document.getElementById("qrBox");
       qrText = document.getElementById("qrText");
@@ -12690,6 +12915,40 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       video = document.getElementById("video");
       stopAnimationBtn = document.getElementById("stopAnimationBtn");
       receiverControls = document.getElementById("receiverControls");
+
+      // Receiver controls: Clear / Copy / Download
+      if (stopAnimationBtn) {
+        stopAnimationBtn.addEventListener('click', () => {
+          stopAnimation();
+          lastReceivedData = null;
+          lastReceivedFormat = null;
+        });
+      }
+      const copyReceivedBtn = document.getElementById('copyReceivedBtn');
+      if (copyReceivedBtn) {
+        copyReceivedBtn.addEventListener('click', () => {
+          if (!lastReceivedData) return;
+          // For binary envelope, copy the filename rather than raw base64
+          let textToCopy = lastReceivedData;
+          if (lastReceivedFormat === 'binary') {
+            try {
+              const parsed = JSON.parse(lastReceivedData);
+              if (parsed.isBinary) textToCopy = parsed.filename || 'binary file — use Download';
+            } catch {}
+          }
+          navigator.clipboard.writeText(textToCopy).then(() => {
+            copyReceivedBtn.textContent = 'Copied!';
+            setTimeout(() => { copyReceivedBtn.textContent = 'Copy'; }, 1500);
+          }).catch(() => {
+            copyReceivedBtn.textContent = 'Failed';
+            setTimeout(() => { copyReceivedBtn.textContent = 'Copy'; }, 1500);
+          });
+        });
+      }
+      const downloadReceivedBtn = document.getElementById('downloadReceivedBtn');
+      if (downloadReceivedBtn) {
+        downloadReceivedBtn.addEventListener('click', downloadReceivedData);
+      }
 
       // Channel setup handlers
       const codeInput = document.getElementById("codeInput");
@@ -12716,6 +12975,14 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       const saveModalConfirmBtn = document.getElementById('saveModalConfirmBtn');
       if (saveModalConfirmBtn) saveModalConfirmBtn.addEventListener('click', confirmSave);
 
+      const keepAliveBtn = document.getElementById('keepAliveBtn');
+      if (keepAliveBtn) {
+        keepAliveBtn.addEventListener('click', () => {
+          bumpIdleTimer();
+          hideSessionWarning();
+        });
+      }
+
       generateCodeBtn.onclick = () => {
         codeInput.value = generateRandomCode();
       };
@@ -12731,7 +12998,19 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       });
 
       leaveChannelBtn.onclick = () => {
-        leaveChannel();
+        userInitiatedLeave = true;
+        const lastCode = channelCode;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.close(1000, 'User left');
+          // onclose will call leaveChannel; it checks userInitiatedLeave and keeps code
+        } else {
+          // Socket already gone (e.g. mid-reconnect) — tear down directly
+          cancelReconnect();
+          leaveChannel();
+          const codeInput = document.getElementById('codeInput');
+          if (codeInput && lastCode) codeInput.value = lastCode;
+          userInitiatedLeave = false;
+        }
       };
 
       // Scan button handlers
@@ -12877,136 +13156,4 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
             .catch(playErr => {
               console.error('❌ video.play() rejected:', playErr);
               showScanStatus(`❌ Camera preview failed: ${playErr.message}`, false, false);
-              stopScanning();
-            });
-
-        } catch (error) {
-          console.error("Camera access error:", error);
-          showScanStatus("❌ Could not access camera.", false, true);
-          stopScanning();
-        }
-      };
-
-      stopScanBtn.onclick = () => {
-        stopScanning();
-        showScanStatus("⏹️ Scanning cancelled", true, true);
-      };
-
-      if (stopAnimationBtn) {
-        stopAnimationBtn.onclick = () => {
-          stopAnimation();
-        };
-      }
-
-      claimSenderBtn.onclick = () => {
-        stopAnimation();
-        if (receiverControls) receiverControls.style.display = 'none';
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-          showScanStatus('❌ Not connected — rejoin the session', false, true);
-          return;
-        }
-        ws.send(JSON.stringify({ type: "claim", code: channelHash }));
-      };
-      
-      // File handling event listeners
-      const fileUploadInput = document.getElementById("fileUploadInput");
-      const saveScannedBtn = document.getElementById("saveScannedBtn");
-      const downloadReceivedBtn = document.getElementById("downloadReceivedBtn");
-      
-      if (fileUploadInput) {
-        fileUploadInput.onchange = (e) => {
-          if (e.target.files && e.target.files[0]) {
-            handleFileUpload(e.target.files[0]);
-            e.target.value = ''; // Reset input for re-upload
-          }
-        };
-      }
-      
-      if (saveScannedBtn) {
-        saveScannedBtn.onclick = () => {
-          saveScannedData();
-        };
-      }
-
-      if (downloadReceivedBtn) {
-        downloadReceivedBtn.onclick = () => {
-          downloadReceivedData();
-        };
-      }
-
-      // "Show as QR for Coldcard" — sender side (after binary file upload)
-      const showAsQRBtn = document.getElementById('showAsQRBtn');
-      if (showAsQRBtn) {
-        showAsQRBtn.onclick = async () => {
-          if (!lastUploadedBytes) {
-            showScanStatus('❌ No binary file loaded — upload a .psbt first', false, true);
-            return;
-          }
-          if (DEBUG) {
-            const firstBytes = Array.from(lastUploadedBytes.slice(0, 5)).map(b => b.toString(16).padStart(2, '0')).join(' ');
-            console.log(`📦 BBQR encode: ${lastUploadedBytes.length} bytes, first 5: ${firstBytes}`);
-          }
-          const frames = await encodeToBBQR(lastUploadedBytes);
-          try {
-            const roundTripped = await decodeBBQRToBytes(frames.join('\n'));
-            const hashOrig = await crypto.subtle.digest('SHA-256', lastUploadedBytes);
-            const hashRT   = await crypto.subtle.digest('SHA-256', roundTripped);
-            const orig = Array.from(new Uint8Array(hashOrig)).map(b => b.toString(16).padStart(2,'0')).join('');
-            const rt   = Array.from(new Uint8Array(hashRT)).map(b => b.toString(16).padStart(2,'0')).join('');
-            if (orig !== rt) {
-              showScanStatus('❌ BBQR integrity check FAILED — encoded bytes do not round-trip.', false, false);
-              console.error('BBQR integrity mismatch', { orig, rt });
-              return;
-            }
-            if (DEBUG) console.log('✅ BBQR integrity OK — round-trip SHA-256 matches');
-          } catch (e) {
-            console.warn('BBQR integrity check error:', e);
-          }
-          showBBQRAnimation(frames);
-          showScanStatus(`📱 Showing ${frames.length}-frame BBQR — hold up to Coldcard`, true, false);
-        };
-      }
-
-      const copyReceivedBtn = document.getElementById('copyReceivedBtn');
-      if (copyReceivedBtn) {
-        copyReceivedBtn.addEventListener('click', () => {
-          if (!lastReceivedData) return;
-          navigator.clipboard.writeText(lastReceivedData).then(() => {
-            copyReceivedBtn.textContent = 'copied!';
-            setTimeout(() => { copyReceivedBtn.textContent = 'Copy'; }, 1500);
-          }).catch(() => {
-            copyReceivedBtn.textContent = 'failed';
-            setTimeout(() => { copyReceivedBtn.textContent = 'Copy'; }, 1500);
-          });
-        });
-      }
-
-      // "Show as QR for Coldcard" — receiver side (after receiving a binary file)
-
-      // Check URL for pre-filled code
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlCode = urlParams.get('code');
-      if (urlCode) {
-        codeInput.value = urlCode;
-      }
-
-      // Feature-detect X25519 — required for the handshake
-      checkX25519Support().then(supported => {
-        if (!supported) {
-          const warning = document.createElement('div');
-          warning.style.cssText = 'margin: 1em 0; padding: 0.75em 1em; background: #fef3cd; border: 1px solid #f7931a; border-radius: 6px; color: #7a4100; font-size: 14px;';
-          warning.textContent = '⚠️ Your browser does not support X25519 key exchange. Keylay requires Chrome 113+, Firefox 128+, or Safari (iOS 17.4+ / macOS 14.4+).';
-          document.getElementById('channelSetup').prepend(warning);
-          joinChannelBtn.disabled = true;
-        }
-      });
-
-    });
-  </script>
-  <div style="margin-top: 4em; font-size: 11px; color: #aaa; text-align: center; padding-bottom: 2em;">
-    v0.7 · <a href="https://github.com/keylaybtc" style="color: #aaa;">GitHub</a> · <a href="https://keylay.org" style="color: #aaa;">keylay.org</a>
-    <br>No IPs logged. <a href="https://keylay.org/security.html" style="color: #aaa;">Security model</a>
-    <br>Alpha software. <a href="https://github.com/keylaybtc/keylay#disclaimer" style="color: #aaa;">Use at your own risk</a>
-  </div>
-</body>
-</html>
+              stopScanning

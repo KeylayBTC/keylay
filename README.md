@@ -77,10 +77,15 @@ Supports **BC-UR2** (Keystone, Passport, Jade, Foundation) and **BBQR** (Coldcar
 
 ```bash
 node server.js
-# Open index.html directly in your browser, or serve it statically
+python3 -m http.server 8081   # or any static file server
+# Open http://localhost:8081/index.html in your browser
 ```
 
-The app connects to `localhost:8080` automatically and falls back to `wss://app.keylay.org/ws`. To point at a different relay, edit `WS_LOCAL_URL` / `WS_CLOUD_URL` in `index.html` and add the new origin to the `connect-src` entry in the `Content-Security-Policy` meta tag.
+**You must serve the file over `localhost` — do not open it as a `file://` URL.** Browsers restrict the Web Crypto API (`crypto.subtle`) to [secure contexts](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts): HTTPS origins and `localhost`. A `file://` URL does not qualify, so the page will load but encryption will be unavailable.
+
+`localhost` is explicitly treated as a secure context by all major browsers, so the simple Python server above is sufficient for local use — no self-signed certificate needed. Note that Chrome on desktop is more permissive and will allow `crypto.subtle` on `file://` URLs, but Safari and all browsers on iOS will not — so serving via `localhost` is the safe universal approach.
+
+The app connects to `ws://localhost:8080` for the relay automatically and falls back to `wss://app.keylay.org/ws` if no local server is running. To point at a different relay, edit `WS_LOCAL_URL` / `WS_CLOUD_URL` in `index.html` and add the new origin to the `connect-src` entry in the `Content-Security-Policy` meta tag.
 
 ## Self-Hosting
 

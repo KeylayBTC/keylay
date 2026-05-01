@@ -6,6 +6,42 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ---
 
+## [0.7.1] — Unreleased
+
+### Fixed
+
+- **False-positive compatibility warning on iOS 17.4+.** The browser-support check now distinguishes between two failure modes: a non-secure context (`http://` or `file://` URL, where `crypto.subtle` is undefined by spec) and a genuinely unsupported browser. Previously both cases showed the same "browser unsupported" banner, causing iOS 17.6 users to see the warning when accessing the app over HTTP or opening it as a local file. The banner now correctly tells HTTPS users their browser is fine and explains the HTTPS requirement instead.
+
+- **Auto-reconnect on transient disconnects.** A network blip, server hiccup, or brief iOS background suspension no longer dumps both peers back to the join screen. The app now retries silently in the background with exponential backoff (1 s → 2 s → 4 s → 8 s → 16 s → 30 s, up to 10 attempts / ~5 minutes). Each reconnect performs a fresh X25519 handshake and derives a new session key. If all retries are exhausted the user is returned to the join screen with the session code pre-filled.
+
+- **Session code preservation.** The session code is now kept or cleared based on the reason for leaving, not unconditionally wiped on every exit:
+  - Transient disconnect or reconnect failure: code kept, reconnect attempted.
+  - 60-minute hard cap: code kept — user can immediately start a new session on the same channel.
+  - User clicks Leave: code kept — user may want to return or share it.
+  - 15-minute idle timeout: code cleared — session was abandoned; leaving the code visible on a shared device is a security liability.
+
+- **Idle timeout with network already down.** Previously, if the WS was already closed when the 15-minute idle timer fired (e.g. after a long iOS background suspension), `leaveChannel()` was called without the code-capture step, silently clearing the session code. The direct path now consistently matches the onclose path.
+
+- **Receiver controls hidden for plain-address QR.** When the sender relayed a plain-text QR (e.g. a bare Bitcoin address scanned from a Coldcard), the receiver's Download and Copy buttons stayed hidden because only the BBQR, UR, and binary branches showed `#receiverControls`. The plain-QR branch now shows the controls, and a Copy button has been added alongside Download for all received text payloads.
+
+- **Third-party join disrupting active session.** If a third party entered the session code and clicked Join Session while two peers were already active, their hello (sent in `broadcastHello()` immediately after `ws.onopen`) could reach the server before the session-full close handshake completed. The server forwarded it, and both active peers — seeing a signature-valid hello with an unknown pubkey — treated it as a peer reconnect and reset their session keys. The server now validates that hello and data messages originate from a registered session member before forwarding. The client-side reset guard is also tightened.
+
+- **QR not square on high-DPR mobile.** Added `max-width: 100%; height: auto; aspect-ratio: 1 / 1` to `#qrCanvas` and `#qrDisplayImg`. Previously the canvas had no width constraint and could render non-square on narrow high-density screens when the browser's layout engine scaled width independently of height.
+
+- **BBQR PSBT encoding for large files.** Replaced `btoa(String.fromCharCode(...bytes))` with a chunked encoder that avoids the JS engine spread-argument limit (~65 535). For PSBTs with many inputs the spread could silently truncate the byte array, producing a valid-but-incomplete PSBT that Coldcard rejected with "no key path information."
+
+### Changed
+
+- **Timeout warnings.** A non-blocking orange banner now appears 2 minutes before either timeout fires:
+  - *Idle warning* (fires at 13 min): includes a "Keep session alive" button that resets the idle timer and dismisses the banner. Auto-dismisses if data activity resumes.
+  - *60-minute cap warning* (fires at 58 min): informational only; the hard cap cannot be extended.
+
+- **`leaveChannel()` no longer clears the code input.** Code preservation is now the caller's responsibility, making the policy explicit at each call site rather than buried inside a shared teardown function.
+
+- **Session start time persists across reconnects.** The 60-minute hard cap is measured from the original `sessionStart`, not from each individual WebSocket connection. Reconnecting at minute 55 does not reset the clock.
+
+---
+
 ## [0.7.0] — Unreleased
 
 First public release. Pre-publication development history is internal and is not retroactively documented here.
