@@ -12896,8 +12896,9 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
         }
         if (!(await checkX25519Support())) {
           banner.textContent =
-            '⚠️ Your browser does not support X25519 key exchange. ' +
-            'Keylay requires Chrome 113+, Firefox 128+, or Safari (iOS 17.4+ / macOS 14.4+).';
+            '⚠️ Could not verify X25519 key exchange support. If you are on a supported browser ' +
+            '(Chrome 113+, Firefox 128+, Safari iOS 17.4+ / macOS 14.4+), make sure you are ' +
+            'accessing the app over HTTPS — try app.keylay.org.';
           banner.style.display = 'block';
         }
       })();
