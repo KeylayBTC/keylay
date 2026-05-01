@@ -13165,7 +13165,6 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       // File handling event listeners
       const fileUploadInput = document.getElementById("fileUploadInput");
       const saveScannedBtn = document.getElementById("saveScannedBtn");
-      const downloadReceivedBtn = document.getElementById("downloadReceivedBtn");
       
       if (fileUploadInput) {
         fileUploadInput.onchange = (e) => {
@@ -13179,12 +13178,6 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       if (saveScannedBtn) {
         saveScannedBtn.onclick = () => {
           saveScannedData();
-        };
-      }
-
-      if (downloadReceivedBtn) {
-        downloadReceivedBtn.onclick = () => {
-          downloadReceivedData();
         };
       }
 
