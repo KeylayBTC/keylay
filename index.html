@@ -435,7 +435,7 @@
 <body>
   <h2>Keylay</h2>
 
-  <!-- Compatibility warning — shown only when crypto.subtle is unavailable or X25519 unsupported -->
+  <!-- Compatibility warning -->
   <div id="compatWarning" style="display:none; background:#7c4a00; color:#ffe7b8; border-radius:6px; padding:12px 16px; margin:0 0 16px; font-size:14px; text-align:center; line-height:1.5;"></div>
 
   <!-- Connection Status Indicator -->
@@ -12880,11 +12880,7 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
     // ============================================
 
     document.addEventListener("DOMContentLoaded", () => {
-      // Compat check — runs immediately so the user sees the banner before trying anything.
-      // Two distinct failure modes:
-      //   1. Non-secure context (http:// or file://): crypto.subtle is undefined by spec.
-      //      iOS/Safari are especially strict about this.
-      //   2. Old browser: secure context but X25519 not yet implemented.
+      // Compat check: non-secure context vs unsupported browser
       (async () => {
         const banner = document.getElementById('compatWarning');
         if (!banner) return;
@@ -12892,7 +12888,7 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
           banner.innerHTML =
             '⚠️ Keylay requires a secure context to enable encryption. ' +
             'Use the hosted app at <a href="https://app.keylay.org" style="color:#ffe7b8;">app.keylay.org</a>, ' +
-            'or serve the file locally via <code style="background:rgba(0,0,0,0.25);padding:1px 5px;border-radius:3px;">python3 -m http.server 8081</code> ' +
+            'or serve locally via <code style="background:rgba(0,0,0,0.25);padding:1px 5px;border-radius:3px;">python3 -m http.server 8081</code> ' +
             'and open <code style="background:rgba(0,0,0,0.25);padding:1px 5px;border-radius:3px;">http://localhost:8081</code>. ' +
             'Opening as a local file (file://) or over plain http:// is not supported.';
           banner.style.display = 'block';
@@ -12916,33 +12912,12 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       stopAnimationBtn = document.getElementById("stopAnimationBtn");
       receiverControls = document.getElementById("receiverControls");
 
-      // Receiver controls: Clear / Copy / Download
+      // Receiver controls: Clear / Download
       if (stopAnimationBtn) {
         stopAnimationBtn.addEventListener('click', () => {
           stopAnimation();
           lastReceivedData = null;
           lastReceivedFormat = null;
-        });
-      }
-      const copyReceivedBtn = document.getElementById('copyReceivedBtn');
-      if (copyReceivedBtn) {
-        copyReceivedBtn.addEventListener('click', () => {
-          if (!lastReceivedData) return;
-          // For binary envelope, copy the filename rather than raw base64
-          let textToCopy = lastReceivedData;
-          if (lastReceivedFormat === 'binary') {
-            try {
-              const parsed = JSON.parse(lastReceivedData);
-              if (parsed.isBinary) textToCopy = parsed.filename || 'binary file — use Download';
-            } catch {}
-          }
-          navigator.clipboard.writeText(textToCopy).then(() => {
-            copyReceivedBtn.textContent = 'Copied!';
-            setTimeout(() => { copyReceivedBtn.textContent = 'Copy'; }, 1500);
-          }).catch(() => {
-            copyReceivedBtn.textContent = 'Failed';
-            setTimeout(() => { copyReceivedBtn.textContent = 'Copy'; }, 1500);
-          });
         });
       }
       const downloadReceivedBtn = document.getElementById('downloadReceivedBtn');
@@ -13156,4 +13131,136 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
             .catch(playErr => {
               console.error('❌ video.play() rejected:', playErr);
               showScanStatus(`❌ Camera preview failed: ${playErr.message}`, false, false);
-              stopScanning
+              stopScanning();
+            });
+
+        } catch (error) {
+          console.error("Camera access error:", error);
+          showScanStatus("❌ Could not access camera.", false, true);
+          stopScanning();
+        }
+      };
+
+      stopScanBtn.onclick = () => {
+        stopScanning();
+        showScanStatus("⏹️ Scanning cancelled", true, true);
+      };
+
+      if (stopAnimationBtn) {
+        stopAnimationBtn.onclick = () => {
+          stopAnimation();
+        };
+      }
+
+      claimSenderBtn.onclick = () => {
+        stopAnimation();
+        if (receiverControls) receiverControls.style.display = 'none';
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          showScanStatus('❌ Not connected — rejoin the session', false, true);
+          return;
+        }
+        ws.send(JSON.stringify({ type: "claim", code: channelHash }));
+      };
+      
+      // File handling event listeners
+      const fileUploadInput = document.getElementById("fileUploadInput");
+      const saveScannedBtn = document.getElementById("saveScannedBtn");
+      const downloadReceivedBtn = document.getElementById("downloadReceivedBtn");
+      
+      if (fileUploadInput) {
+        fileUploadInput.onchange = (e) => {
+          if (e.target.files && e.target.files[0]) {
+            handleFileUpload(e.target.files[0]);
+            e.target.value = ''; // Reset input for re-upload
+          }
+        };
+      }
+      
+      if (saveScannedBtn) {
+        saveScannedBtn.onclick = () => {
+          saveScannedData();
+        };
+      }
+
+      if (downloadReceivedBtn) {
+        downloadReceivedBtn.onclick = () => {
+          downloadReceivedData();
+        };
+      }
+
+      // "Show as QR for Coldcard" — sender side (after binary file upload)
+      const showAsQRBtn = document.getElementById('showAsQRBtn');
+      if (showAsQRBtn) {
+        showAsQRBtn.onclick = async () => {
+          if (!lastUploadedBytes) {
+            showScanStatus('❌ No binary file loaded — upload a .psbt first', false, true);
+            return;
+          }
+          if (DEBUG) {
+            const firstBytes = Array.from(lastUploadedBytes.slice(0, 5)).map(b => b.toString(16).padStart(2, '0')).join(' ');
+            console.log(`📦 BBQR encode: ${lastUploadedBytes.length} bytes, first 5: ${firstBytes}`);
+          }
+          const frames = await encodeToBBQR(lastUploadedBytes);
+          try {
+            const roundTripped = await decodeBBQRToBytes(frames.join('\n'));
+            const hashOrig = await crypto.subtle.digest('SHA-256', lastUploadedBytes);
+            const hashRT   = await crypto.subtle.digest('SHA-256', roundTripped);
+            const orig = Array.from(new Uint8Array(hashOrig)).map(b => b.toString(16).padStart(2,'0')).join('');
+            const rt   = Array.from(new Uint8Array(hashRT)).map(b => b.toString(16).padStart(2,'0')).join('');
+            if (orig !== rt) {
+              showScanStatus('❌ BBQR integrity check FAILED — encoded bytes do not round-trip.', false, false);
+              console.error('BBQR integrity mismatch', { orig, rt });
+              return;
+            }
+            if (DEBUG) console.log('✅ BBQR integrity OK — round-trip SHA-256 matches');
+          } catch (e) {
+            console.warn('BBQR integrity check error:', e);
+          }
+          showBBQRAnimation(frames);
+          showScanStatus(`📱 Showing ${frames.length}-frame BBQR — hold up to Coldcard`, true, false);
+        };
+      }
+
+      const copyReceivedBtn = document.getElementById('copyReceivedBtn');
+      if (copyReceivedBtn) {
+        copyReceivedBtn.addEventListener('click', () => {
+          if (!lastReceivedData) return;
+          navigator.clipboard.writeText(lastReceivedData).then(() => {
+            copyReceivedBtn.textContent = 'copied!';
+            setTimeout(() => { copyReceivedBtn.textContent = 'Copy'; }, 1500);
+          }).catch(() => {
+            copyReceivedBtn.textContent = 'failed';
+            setTimeout(() => { copyReceivedBtn.textContent = 'Copy'; }, 1500);
+          });
+        });
+      }
+
+      // "Show as QR for Coldcard" — receiver side (after receiving a binary file)
+
+      // Check URL for pre-filled code
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlCode = urlParams.get('code');
+      if (urlCode) {
+        codeInput.value = urlCode;
+      }
+
+      // Feature-detect X25519 — required for the handshake
+      checkX25519Support().then(supported => {
+        if (!supported) {
+          const warning = document.createElement('div');
+          warning.style.cssText = 'margin: 1em 0; padding: 0.75em 1em; background: #fef3cd; border: 1px solid #f7931a; border-radius: 6px; color: #7a4100; font-size: 14px;';
+          warning.textContent = '⚠️ Your browser does not support X25519 key exchange. Keylay requires Chrome 113+, Firefox 128+, or Safari (iOS 17.4+ / macOS 14.4+).';
+          document.getElementById('channelSetup').prepend(warning);
+          joinChannelBtn.disabled = true;
+        }
+      });
+
+    });
+  </script>
+  <div style="margin-top: 4em; font-size: 11px; color: #aaa; text-align: center; padding-bottom: 2em;">
+    v0.7 · <a href="https://github.com/keylaybtc" style="color: #aaa;">GitHub</a> · <a href="https://keylay.org" style="color: #aaa;">keylay.org</a>
+    <br>No IPs logged. <a href="https://keylay.org/security.html" style="color: #aaa;">Security model</a>
+    <br>Alpha software. <a href="https://github.com/keylaybtc/keylay#disclaimer" style="color: #aaa;">Use at your own risk</a>
+  </div>
+</body>
+</html>
