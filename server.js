@@ -42,7 +42,29 @@ const PONG_TIMEOUT_MS = 60 * 1000;       // intentionally unenforced — see com
 // State
 // ============================================================
 
-const wss = new WebSocket.Server({ port: 8080, maxPayload: MAX_PAYLOAD_BYTES });
+const PORT = parseInt(process.env.PORT, 10) || 8080;
+const wss = new WebSocket.Server({ port: PORT, maxPayload: MAX_PAYLOAD_BYTES });
+
+// Fail loudly and clearly instead of dumping a raw stack trace and
+// crash-looping under pm2/systemd auto-restart. EADDRINUSE almost always
+// means a previous instance is still bound to the port — stop it before
+// restarting (`pm2 list`, `lsof -i :<port>`), or set PORT to run elsewhere.
+wss.on('error', (err) => {
+  const ts = new Date().toISOString();
+  if (err && err.code === 'EADDRINUSE') {
+    console.error(`${ts} FATAL: port ${PORT} already in use — another instance is probably still running. ` +
+      `Stop it (pm2 list / lsof -i :${PORT}) or set PORT before restarting.`);
+  } else {
+    console.error(`${ts} FATAL: WebSocket server error: ${(err && err.stack) || err}`);
+  }
+  process.exit(1);
+});
+
+// Dated confirmation that the bind actually succeeded, so a healthy start is
+// distinguishable from a crash-loop in the log.
+wss.on('listening', () => {
+  console.log(new Date().toISOString() + ` listening on port ${PORT}`);
+});
 
 // code -> { sender, receivers, createdAt, idleTimer, maxTimer }
 const sessions = new Map();
