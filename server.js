@@ -88,10 +88,12 @@ function truncateIp(ip) {
   if (!ip || ip === 'unknown') return 'unknown';
   // Strip IPv4-mapped IPv6 prefix: "::ffff:192.168.1.1" -> "192.168.1.1"
   if (ip.startsWith('::ffff:')) ip = ip.slice(7);
+  // Retain the network-identifying portion and zero the rest, keeping a
+  // recognizable IP form: /16 for IPv4 (192.168.0.0), /32 for IPv6 (2001:db8::).
   const v4 = ip.match(/^(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/);
-  if (v4) return `${v4[1]}.${v4[2]}`;
+  if (v4) return `${v4[1]}.${v4[2]}.0.0`;
   const v6 = ip.match(/^([0-9a-f]{1,4}):([0-9a-f]{1,4}):/i);
-  if (v6) return `${v6[1]}:${v6[2]}`;
+  if (v6) return `${v6[1]}:${v6[2]}::`;
   return 'unknown';
 }
 
@@ -356,7 +358,7 @@ function handleDataTransmission(ws, code, payload, format, encrypted, counter) {
 
   bumpIdle(code);
 
-  log('routed ' + (format || 'data') + ' to ' + forwarded + ' peer(s)');
+  log('routed to ' + forwarded + ' peer(s)');
 }
 
 function handleHello(ws, code, pubkey, sig) {
