@@ -72,10 +72,24 @@ const sessions = new Map();
 const ipConnections = new Map();
 let globalConnections = 0;
 
+// Client IP resolution. The raw socket address is not spoofable, so it is the
+// safe default. But behind a reverse proxy the socket address is the proxy's
+// (e.g. ::1), which makes the per-IP cap collapse to a global one and yields
+// no geographic data. Set TRUST_PROXY=1 to instead read the client IP from a
+// header the proxy sets (default X-Real-IP). ONLY enable this when a proxy you
+// control overwrites that header on every request — otherwise a client can
+// supply its own value and spoof its IP to bypass the per-IP connection cap.
+const TRUST_PROXY = process.env.TRUST_PROXY === '1';
+const PROXY_IP_HEADER = (process.env.TRUST_PROXY_HEADER || 'x-real-ip').toLowerCase();
+
 function remoteIp(req) {
-  // Deliberately NOT honoring X-Forwarded-For — doing so without a trusted
-  // proxy in front allows clients to spoof their IP. If you deploy behind a
-  // proxy you trust, add the parsing here and gate it on a config flag.
+  if (TRUST_PROXY) {
+    const fwd = req.headers[PROXY_IP_HEADER];
+    if (fwd) {
+      const ip = String(fwd).split(',')[0].trim();
+      if (ip) return ip;
+    }
+  }
   return req.socket.remoteAddress || 'unknown';
 }
 
