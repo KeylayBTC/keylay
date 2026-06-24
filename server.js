@@ -194,10 +194,6 @@ wss.on('connection', function connection(ws, req) {
 
     try {
       const message = JSON.parse(data);
-      // Sanitize message.type before logging — it is attacker-controlled.
-      // Cap length and strip anything outside [a-z0-9_-] to keep logs parseable.
-      const safeType = String(message.type || '').slice(0, 16).replace(/[^a-z0-9_-]/gi, '?');
-      log('msg type=' + safeType);
 
       if (message.type === 'join') {
         handleJoin(ws, message.code);
