@@ -120,7 +120,7 @@ No open findings. The following are tracked as planned improvements:
 
 This review is a thorough manual analysis with direct access to the source. It constitutes a detailed technical review but not a formal third-party security audit. No symbolic verification, fuzzing, or independent reproducibility testing was performed.
 
-The full technical report, including annotated code paths, severity ratings, and the complete finding history from Revisions 1–3, is available as Keylay_Security_Review_v3.pdf.
+The full technical report, including annotated code paths, severity ratings, and the complete finding history from Revisions 1–3, is published at [keylay.org/Keylay_Security_Review_v3.pdf](https://keylay.org/Keylay_Security_Review_v3.pdf).
 
 ---
 

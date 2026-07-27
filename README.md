@@ -45,7 +45,7 @@ Supports **BC-UR2** (Keystone, Passport, Jade, Foundation) and **BBQR** (Coldcar
 
 ### Session Setup
 
-1. Both parties open the app (hosted at `app.keylay.org` or self-hosted)
+1. Both parties open the app (hosted at `app.keylay.org`, served locally, or fully self-hosted — see [Choosing How to Run Keylay](#choosing-how-to-run-keylay))
 2. Share a secret channel code out-of-band (any method — it never touches the server)
 3. Both enter the code. First to join is Sender; the other is Receiver. Roles are swapped when Receiver claims Sender role.
 
@@ -60,46 +60,85 @@ Supports **BC-UR2** (Keystone, Passport, Jade, Foundation) and **BBQR** (Coldcar
 ### Security Model
 
 - The channel code is used only for key derivation and is never sent to the server
-- The relay sees only ciphertext — never plaintext, the raw channel code, or message metadata
-- No accounts, no databases. The hosted relay at `app.keylay.org` writes operational logs limited to truncated IP prefixes (first two octets for IPv4, first two hextets for IPv6) for rate-limit triage and country-level aggregation; logs rotate on a 7-day window. Channel codes, channel hashes, session content, and message counters are never logged
+- The relay sees only ciphertext — never plaintext, the raw channel code, or any application-layer metadata (file names, file types, payload contents). Like any relay, it can necessarily observe connection-layer metadata: message timing, ciphertext sizes, and which two connections are exchanging data. This is inherent to any relayed transport and is stated here so you can weigh it; the planned Nostr transport reduces reliance on any single relay operator
+- No accounts, no databases. The hosted relay at `app.keylay.org` writes operational logs limited to truncated IP prefixes (first two octets for IPv4, first two hextets for IPv6) for rate-limit triage and country-level aggregation; logs rotate on a 7-day window. Full IP addresses, channel codes, channel hashes, session content, and message counters are never logged
 - Encryption: AES-256-GCM session keys derived from X25519 key exchange (HKDF); PBKDF2-SHA256 (300,000 iterations) derives the HMAC key used to authenticate the handshake
+- The app hard-fails without encryption: in a browsing context where the Web Crypto API is unavailable, Keylay displays a warning banner and disables the Join button. It never falls back to sending data unencrypted — there is no code path that transmits plaintext
+- An internal security review (three revisions, all findings resolved) is published at [keylay.org/security.html](https://keylay.org/security.html); the full report is `Keylay_Security_Review_v3.pdf`. This is not a formal third-party audit — see [Roadmap](#roadmap)
 
 ## Technology
 
-- Single self-contained HTML file — no build step, no framework, no external dependencies
-- WebSocket relay (`server.js`) — Node.js, ~120 lines
-- QR scanning: [jsQR v1.4.0](https://github.com/cozmo/jsQR) (inlined)
-- QR generation: [qrcode v1.5.1](https://github.com/soldair/node-qrcode) (inlined)
+- Single self-contained HTML file — no build step, no framework, no network-loaded dependencies (nothing fetched from a CDN at runtime)
+- Three third-party libraries are vendored and inlined at pinned versions, so the code you audit is exactly the code that runs:
+  - QR scanning: [jsQR v1.4.0](https://github.com/cozmo/jsQR)
+  - QR generation: [qrcode v1.5.1](https://github.com/soldair/node-qrcode)
+  - Zlib compression (BBQr 'Z' encoding): [pako v2.1.0](https://github.com/nodeca/pako) — required because `CompressionStream('deflate')` produces RFC 1950 output (78 9C header) that Coldcard Q rejects; pako's `deflateRaw` with `windowBits: 10` produces the raw DEFLATE format the spec requires
 - BBQR encode/decode: implemented natively per the [BBQr spec](https://github.com/coinkite/BBQr)
-- Zlib compression (BBQr 'Z' encoding): [pako v2.1.0](https://github.com/nodeca/pako) (inlined) — required because `CompressionStream('deflate')` produces RFC 1950 output (78 9C header) that Coldcard Q rejects; pako's `deflateRaw` with `windowBits: 10` produces the raw DEFLATE format the spec requires
+- WebSocket relay (`server.js`) — a single stateless Node.js file, no database
 
-## Running Locally
+## Choosing How to Run Keylay
+
+There are three ways to run Keylay, in increasing order of trust removed from the operator:
+
+**1. Hosted app (convenience tier).** Open [app.keylay.org](https://app.keylay.org). The relay only ever sees ciphertext, but the *application code* is delivered to your browser on every load — you are trusting that the served code matches the published source at that moment. This is the right tier for evaluating Keylay and for threat models where a targeted, per-load code swap by the host is not a concern.
+
+**2. Local app + hosted relay (recommended for higher-threat use).** Serve `index.html` locally from a copy you verified, and let it use the hosted relay. This removes the code-delivery trust entirely — the relay still only sees ciphertext, and the code executing in your browser is the code you audited. No Node.js required:
 
 ```bash
-node server.js
 python3 -m http.server 8081   # or any static file server
-# Open http://localhost:8081/index.html in your browser
+# Open http://localhost:8081/index.html
 ```
 
-**You must serve the file over `localhost` — do not open it as a `file://` URL.** Browsers restrict the Web Crypto API (`crypto.subtle`) to [secure contexts](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts): HTTPS origins and `localhost`. A `file://` URL does not qualify, so the page will load but encryption will be unavailable.
+With no local relay running, the app automatically falls back to the hosted relay at `wss://app.keylay.org/ws` and **displays a visible amber status indicator showing that the cloud relay is in use** (a fallback is never silent). This is an intentional, supported mode, not a degraded one.
 
-`localhost` is explicitly treated as a secure context by all major browsers, so the simple Python server above is sufficient for local use — no self-signed certificate needed. Note that Chrome on desktop is more permissive and will allow `crypto.subtle` on `file://` URLs, but Safari and all browsers on iOS will not — so serving via `localhost` is the safe universal approach.
+**3. Full self-hosting.** Run both the app and the relay yourself:
 
-The app connects to `ws://localhost:8080` for the relay automatically and falls back to `wss://app.keylay.org/ws` if no local server is running. To point at a different relay, edit `WS_LOCAL_URL` / `WS_CLOUD_URL` in `index.html` and add the new origin to the `connect-src` entry in the `Content-Security-Policy` meta tag.
+```bash
+node server.js                # relay on ws://localhost:8080
+python3 -m http.server 8081   # static server for index.html
+# Open http://localhost:8081/index.html
+```
 
-## Self-Hosting
+The connection status indicator always shows which relay you are connected to: green "Local Server" for your own relay, "Cloud Relay" for the hosted one, and the amber warning state when a local relay was expected but unreachable. To point at a different relay, edit `WS_LOCAL_URL` / `WS_CLOUD_URL` in `index.html` and add the new origin to the `connect-src` entry in the `Content-Security-Policy` meta tag.
 
-The relay is a single stateless Node.js file. It stores nothing and has no database. Any server capable of running Node.js works. The frontend is a single HTML file — serve it statically alongside the relay or from any web server.
+See `DEPLOYMENT.md` for a complete production setup guide including SSL and process management.
 
-See `DEPLOYMENT.md` for a complete setup guide including SSL and process management.
+### Why `localhost` and not `file://`
+
+Serve the file over `localhost` rather than double-clicking `index.html`. The [Secure Contexts spec](https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Secure_Contexts) treats `file://` URLs as potentially trustworthy, and current Chrome and Firefox do expose `crypto.subtle` there — but browser behavior on `file://` is not uniform (Safari and iOS differ), and camera access for QR scanning is separately restricted on `file://` in some browsers. `localhost` is treated as a secure context by all major browsers, so the one-line static server above is the reliable universal path — no self-signed certificate needed. If you do open the app in a context without Web Crypto support, it refuses to join a session and tells you why, rather than degrading.
+
+### Verifying What You Run
+
+For local use, run code pinned to a release, not a live download:
+
+```bash
+git clone https://github.com/keylaybtc/keylay
+cd keylay
+git tag -l            # list release tags
+git checkout <tag>    # pin to a release
+git log -1            # record the commit hash you are running
+```
+
+Git commit hashes are content-addressed, so pinning to a tag and recording its commit hash gives you a stable reference you can compare against what others report and against future releases. For the highest-threat use, review `index.html` itself — it is a single readable file and the complete client — before serving it.
 
 ## Roadmap
 
-- [ ] Peer-to-peer connections via Nostr — eliminates the need to trust any relay operator; users who prefer the convenience of a hosted relay can continue using it alongside the Nostr option
+Near-term:
+
+- [ ] Peer-to-peer transport via Nostr — Nostr relays become the primary channel with WebSocket as fallback; eliminates the need to trust any single relay operator
+- [ ] Wallet guides — step-by-step setup and signing flows for major wallet and coordinator combinations
 - [ ] Challenge/response pairing for out-of-band verification before transfer
 - [ ] BC-UR2 encoding for output to Keystone/Passport (currently decodes only)
 - [ ] UR decoding to alternate save formats (base64 PSBT, plain text descriptor, BSMS)
 - [ ] Connection quality indicator and receiver count display
+
+Longer-term:
+
+- [ ] Multi-party sessions — declared signer count with slot-based key collection, enabling in-browser descriptor assembly without separate per-signer sessions
+- [ ] Persistent / resumable sessions — named sessions with store-and-forward delivery over Nostr, so participants can coordinate asynchronously
+- [ ] PWA support — installable mobile use without an app store
+- [ ] Memory-hard KDF upgrade — replace PBKDF2 with Argon2id or scrypt for the handshake key derivation (a breaking protocol change requiring a migration plan)
+- [ ] Formal third-party security audit — the current review is internal; an external audit is planned before the project exits alpha
 
 ## Disclaimer
 

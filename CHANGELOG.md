@@ -6,7 +6,7 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ---
 
-## [0.7.1] — Unreleased
+## [0.7.1] — 2026-07-27
 
 ### Fixed
 
@@ -31,6 +31,12 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 - **BBQR PSBT encoding for large files.** Replaced `btoa(String.fromCharCode(...bytes))` with a chunked encoder that avoids the JS engine spread-argument limit (~65 535). For PSBTs with many inputs the spread could silently truncate the byte array, producing a valid-but-incomplete PSBT that Coldcard rejected with "no key path information."
 
 ### Changed
+
+- **Cloud-relay fallback is now visibly flagged.** When the app is served from `localhost` and the local relay attempt fails, rolling over to the hosted relay no longer shows the standard green "Cloud Relay" pill. A distinct amber status state — "⚠️ Local relay unreachable — using cloud relay (app.keylay.org) • Encrypted" — is shown instead (light- and dark-mode styles), the connecting status says why the relay changed, and an unconditional `console.warn` records the fallback. The indicator persists across reconnects and resets on leave/rejoin. A deliberate cloud connection still shows the normal pill.
+
+- **Footer privacy claim corrected.** "No IPs logged" → "No full IPs logged," matching the truncated-IP (/16 prefix) logging disclosed in the security review and README.
+
+- **README rewritten for accuracy.** Corrected the secure-context explanation (`file://` is potentially trustworthy per spec; `localhost` remains the universal recommendation), replaced "no external dependencies" with "vendored and inlined at pinned versions," scoped the relay metadata claim to application-layer with connection-layer visibility conceded, documented the three run modes as explicit trust tiers with a verification section, and reconciled the roadmap with keylay.org.
 
 - **Timeout warnings.** A non-blocking orange banner now appears 2 minutes before either timeout fires:
   - *Idle warning* (fires at 13 min): includes a "Keep session alive" button that resets the idle timer and dismisses the banner. Auto-dismisses if data activity resumes.

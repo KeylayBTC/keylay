@@ -1,146 +1,62 @@
-# Keylay Planned Features
+# Keylay Development Plan
 
-This file tracks potential features and enhancements for future development.
+This is the detailed public plan for Keylay. The README's Roadmap section and the status section on [keylay.org](https://keylay.org) are summaries of this file; if they ever disagree, tell us — consistency between them is a stated goal, not an accident.
 
----
-
-## High Priority
-
-### Hash-Pin Inline Scripts in CSP
-**Status:** Planned (security hardening follow-up — see `outputs/security_review_summary.md`)
-**Why:** The current CSP uses `script-src 'self' 'unsafe-inline'` because the app ships as a single-file bundle with inline `<script>` blocks. `'unsafe-inline'` weakens XSS defense — an injected `<script>` tag would still execute.
-
-**Proposed Solution:**
-- Replace `'unsafe-inline'` in the CSP meta tag with explicit `'sha256-<digest>'` entries for each inline `<script>` block.
-- Every edit to an inline script invalidates its hash, so either freeze the inline blocks or add a pre-commit/pre-deploy step that recomputes and injects the hashes automatically.
-- Same treatment for inline `<style>` blocks if/when we want to drop `style-src 'unsafe-inline'`.
-
-**Do not start this** until the codebase is stable enough that rehashing on every edit isn't onerous, or until a build step exists to automate it. Any agent reporting open security issues should keep this item on the list until it's done.
+Keylay is alpha software built by a small team. Items here are intentions with reasoning attached, not commitments with dates. Where a design has a known hard problem, the problem is written down here before the feature ships — if you spot a flaw in the reasoning, [we want to hear it](mailto:contact@keylay.org).
 
 ---
 
-### Timed Capture Mode for Fountain-Coded QR Sequences
-**Status:** Planned  
-**Use Case:** BC-UR2 and other fountain-coded QR sequences generate more frames than strictly needed. Current behavior captures only the minimum required fragments (e.g., 2 frames), but some users may want to capture all displayed frames for exact reproduction.
+## Near-term
 
-**Proposed Solution:**
-- Add a "Capture All Frames" toggle or button
-- When enabled, scan for a configurable duration (e.g., 10 seconds) instead of stopping at minimum fragments
-- Capture all unique frames seen during the time window
-- Display frame count during capture: "Captured 5 unique frames..."
+**Challenge/response pairing.** Out-of-band verification between peers before any transfer, reducing reliance on channel-code secrecy alone.
 
-**Technical Notes:**
-- Fountain codes can generate infinite frames, so time-based cutoff is necessary
-- Store frames by sequence number to avoid duplicates
-- Consider adding a "I've captured enough" manual stop button
+**BC-UR2 encoding.** Keylay currently decodes UR sequences (Keystone, Passport, Jade, Foundation) but outputs only BBQR and raw QR. Encoding to UR closes the loop for non-Coldcard devices.
 
----
+**UR decoding to alternate save formats.** Decode received UR payloads into directly usable formats: plain-text descriptors, base64 PSBT, BSMS, JSON. The decoding libraries exist as Node packages and need browser bundling.
 
-## Medium Priority
+**Timed capture mode for fountain-coded QR sequences.** BC-UR2 fountain codes emit more frames than the minimum needed for reconstruction. Today Keylay stops at the minimum; a capture-all-frames mode (time-boxed, with a manual stop) will support exact reproduction workflows.
 
-### Hosted WebSocket Server
-**Status:** Planned  
-**Description:** Deploy a public WebSocket relay server so users don't need to run their own.
+**Wallet guides.** Step-by-step setup and signing flows for major wallet and coordinator combinations, starting from the existing Sparrow + Coldcard guide.
 
-**Considerations:**
-- Server sees only encrypted blobs (zero-knowledge)
-- Need to choose hosting provider
-- Add URL to fallback in `getServerConfig()`
+**Connection quality indicator and receiver count.** Surface latency and how many peers are connected to a channel.
 
-### UR Decoding for Save Formats
-**Status:** Planned  
-**Description:** Decode UR data to enable additional save formats (plain text descriptors, base64 PSBT, etc.)
+## Security hardening
 
-**Current State:**
-- UR decoding libraries are installed (`@ngraveio/bc-ur`, `@keystonehq/bc-ur-registry-btc`)
-- These are Node.js packages that need to be bundled for browser use
+**CSP hash-pinning for inline scripts.** The app ships as a single file with inline `<script>` blocks, so the Content-Security-Policy currently includes `script-src 'unsafe-inline'` — meaning the CSP restricts where an injected script could exfiltrate data, but does not stop one from executing. The fix is replacing `'unsafe-inline'` with per-block `sha256-` hash entries. This is deliberately deferred: every edit to an inline script invalidates its hash, so pinning before the code stabilizes (or before a build step automates rehashing) would make each release error-prone. Until it lands, this is an acknowledged, disclosed gap — see `security.md` and the [security page](https://keylay.org/security.html).
 
-**Implementation Options:**
-1. **Webpack/Rollup Bundle**: Bundle the libraries for browser use
-2. **CDN Version**: Use browser-compatible CDN builds if available
-3. **Server-Side Decoding**: Send UR data to server for decoding (less ideal)
+**Memory-hard KDF.** PBKDF2-SHA256 (300,000 iterations) is deliberately conservative but not memory-hard; Argon2id or scrypt would resist GPU-accelerated offline attack on the channel code far better. This is a breaking protocol change and will ship with a migration plan, not as a silent swap.
 
-**Formats to Enable:**
-- `crypto-output` → Plain text descriptor, BSMS, JSON
-- `crypto-psbt` → Base64 PSBT, Hex PSBT
-- `crypto-hdkey` → Plain text xpub, JSON with derivation path
-- `crypto-account` → JSON account export
+**Formal third-party audit.** The current security review is internal and AI-assisted, published in full. An external audit is planned before Keylay exits alpha.
 
----
+## Phase 2 — Nostr transport and what it unlocks
 
-### Nostr Integration
-**Status:** Future  
-**Description:** Replace custom WebSocket server with Nostr relays for true decentralization.
+**Nostr as primary transport.** Nostr relays replace the single WebSocket relay as the default channel, with WebSocket retained as fallback. This removes the last trusted operator: no single party can take the coordination layer down or observe its traffic patterns from a privileged position.
 
-**Benefits:**
-- No server to run or host
-- Uses existing public Nostr relay infrastructure
-- Same encryption model (NIP-04/44 compatible)
-- Truly trustless architecture
+*Design constraint, stated up front:* NIP-04 is deprecated, and NIP-44's standard key exchange uses persistent Nostr identity keys. Adopting either as-is would silently break Keylay's forward-secrecy model, which depends on ephemeral per-session X25519 keys. The Nostr transport will therefore carry Keylay's own ephemeral handshake inside event payloads, using Nostr only as a dumb transport — not adopt NIP-44 key exchange.
 
-**Migration Path:**
-- Channel code → Nostr shared secret or pubkey
-- WebSocket server → Public Nostr relays
-- Same encrypt/decrypt flow
+**Persistent / resumable sessions (store-and-forward).** Named sessions where encrypted messages persist on relays until participants reconnect, enabling asynchronous coordination — co-signers act hours apart. The DH handshake completes asynchronously too (it's two messages; simultaneity isn't required).
+
+*Security consequence, stated up front:* persistence moves the forward-secrecy boundary. Ciphertext accumulates on relays while the session key lives on-device, so a mid-session device compromise would expose that session's stored traffic. The design answer is a symmetric ratchet within the session — per-message keys derived from a hash chain seeded by the X25519 session key, with chain state deleted as messages are processed, so stored ciphertext ages out of reach. The existing replay counters double as ratchet indices. A ratchet gives forward secrecy within a session but not post-compromise security; a fresh ephemeral re-handshake restores that. These limits will be documented, not glossed.
+
+*Reliability caveat:* public relays prune events on their own schedules; delivery guarantees require retention-selected or dedicated relays.
+
+**Multi-party sessions.** Sessions with a declared signer count and numbered slots — each participant submits cosigner data to a slot, enabling in-browser descriptor assembly without separate per-signer sessions.
+
+**PWA support.** Installable mobile use without an app store.
+
+## Under consideration
+
+Smaller items, unscheduled: adjustable QR animation speed; sharing a channel via QR code; inline help explaining each save format (Raw UR, plain-text descriptor, BSMS/BIP-129, base64 PSBT, JSON) and which wallets accept it.
+
+## Recently completed
+
+- End-to-end encryption: AES-256-GCM, ephemeral X25519, HKDF, HMAC-authenticated handshake
+- BBQR encode/decode (Coldcard) and BC-UR2/UR decode
+- Hosted relay at `wss://app.keylay.org/ws` — rate limiting, session lifetime enforcement, truncated-IP logging
+- Auto-reconnect with exponential backoff and a fresh handshake per reconnect (v0.7.1)
+- Cloud-relay fallback indicator — an amber status state visibly flags when a localhost relay attempt failed and the app rolled over to the hosted relay (v0.7.1)
+- Save dialog with context-aware format options
 
 ---
 
-## Low Priority / Nice to Have
-
-### Save Format Help/Info Links
-**Status:** Planned  
-**Description:** Add a help icon or "Learn more" link next to each save format option that explains:
-- What the format is
-- When to use it
-- Which wallets/software support it
-
-**Implementation Options:**
-- Inline expandable help text (click to expand)
-- Tooltip on hover (info icon)
-- Pop-up modal with detailed explanations
-- Link to external documentation
-
-**Format Details to Include:**
-| Format | Description |
-|--------|-------------|
-| Raw UR | Universal UR-encoded data, readable by any BC-UR compatible device |
-| Plain Text Descriptor | Bitcoin Core-style output descriptor string |
-| BSMS (BIP-129) | Bitcoin Secure Multisig Setup file for coordinating multisig |
-| Base64 PSBT | Standard BIP-174 PSBT encoding |
-| JSON | Structured format with metadata for programmatic use |
-
----
-
-### QR Animation Speed Control
-**Status:** Idea  
-**Description:** Let receiver adjust animation speed (currently fixed at 2 seconds per frame).
-
-### Share Channel via QR Code
-**Status:** Idea  
-**Description:** Generate a QR code containing the channel code + server URL for easy sharing.
-
-### Connection Quality Indicator
-**Status:** Idea  
-**Description:** Show latency/connection quality to help troubleshoot issues.
-
-### Multiple Receiver Support Indicator
-**Status:** Idea  
-**Description:** Show sender how many receivers are connected to the channel.
-
----
-
-## Completed Features
-
-- [x] End-to-end encryption (AES-256-GCM)
-- [x] Channel code entry UI
-- [x] Connection status indicator (Local/Cloud)
-- [x] Configurable WebSocket server URL
-- [x] BC-UR2 / UR sequence support
-- [x] BBQR sequence support
-- [x] Consistent QR error correction levels
-- [x] Save dialog with format options (v5.2)
-
----
-
-*Last updated: 2025-12-04*
-
+*Last updated: 2026-07-26*
