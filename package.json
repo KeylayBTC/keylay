@@ -1,6 +1,6 @@
 {
   "name": "keylay",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Encrypted QR relay for remote multisig Bitcoin coordination",
   "homepage": "https://keylay.org",
   "repository": {

@@ -6,6 +6,14 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ---
 
+## [0.7.2] — 2026-07-27
+
+### Fixed
+
+- **Production connections mislabeled as "Local Server".** The connection logic hardcoded the `'local'` label for the first connection attempt. On a page served from `localhost` — where the first attempt genuinely targets `ws://localhost:8080` — that label was correct, but on `app.keylay.org` the first and only attempt is the cloud relay, so every production session ever made displayed "🟢 Local Server • Encrypted." The production path now labels its connection correctly ("Cloud Relay • Encrypted"), and its failure message no longer tells hosted users to start a local server. Reported by a user who noticed their phone claiming a local server.
+
+---
+
 ## [0.7.1] — 2026-07-27
 
 ### Fixed
