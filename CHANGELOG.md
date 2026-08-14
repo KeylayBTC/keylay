@@ -6,6 +6,27 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ---
 
+## [0.8.0] — 2026-08-14
+
+Security review follow-up (Phase 0 of the combined remediation plan). No wire-protocol
+change — `keylay-v1` clients and these clients still interoperate.
+
+### Security
+
+- **Session code is no longer accepted from the URL (`?code=`).** A code placed in the query string traveled with the page request to the app host and could be recorded in its access logs, the browser's history, or the `Referer` header — which contradicts the property that the session code never reaches the server. The code is now entered manually only. Links that previously pre-filled the code via `?code=` will no longer pre-fill it. [S1]
+- **Ephemeral X25519 handshake keys are now generated non-extractable.** The private key was never exported, so this is functionally invisible, but marking it non-extractable makes forward secrecy enforced by the browser itself rather than by clearing the key reference, and prevents an injected script from exporting the live private key. [S2]
+
+### Fixed
+
+- **UR capture progress no longer counts mixed fountain frames.** A part whose sequence number exceeds the pure-part total is no longer stored or counted, so the capture status can no longer contradict itself (e.g. showing "UR: 7/7 frames — Need: 3"). [TB2]
+- **Current-generation UR type names are now recognized.** Type detection accepts both the legacy `crypto-*` names and the current names that drop the prefix — `ur:psbt`, `ur:output-descriptor`, `ur:hdkey`, `ur:account-descriptor`, `ur:address`, `ur:seed` — so a device emitting current names receives the correct label, file extension, and save-format handling instead of generic fallback. [TB3]
+
+### Added
+
+- **Non-blocking warning for obviously weak hand-typed session codes.** When a manually entered code has very few distinct characters or is a strictly sequential run, a soft warning suggests using "Generate Random." The random generator is unaffected, and the warning never blocks joining. [S6]
+
+---
+
 ## [0.7.2] — 2026-07-27
 
 ### Fixed
