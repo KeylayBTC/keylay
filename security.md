@@ -1,12 +1,13 @@
-# Security Review Summary — v3
+# Security Review Summary — v4
 
 **Subject:** Keylay Encrypted QR Relay — index.html, server.js
 **Security page:** security.html (keylay.org/security)
 **Audit scope:** Cryptographic correctness, protocol claims, relay trust model, server hardening
 **Methodology:** Manual source review, claim-vs-code differential analysis
 **Original review:** April 2, 2026
-**This revision:** April 27, 2026
-**Changes since v2:** Six open items resolved; two documentation discrepancies corrected; security.html updated
+**This revision:** August 2026 (R4)
+**Changes since v3:** August 2026 code audit. Two security findings resolved in v0.8.0 (URL code exposure, exportable ephemeral key) plus a low-entropy-code warning; four low-severity findings disclosed as open with scheduled fixes (unauthenticated `format` field, fixed KDF salt, unbounded relayed decompression, one vendored library's provenance).
+**Reviewed against:** app v0.8.0
 **Status:** Internal review — not a formal third-party security audit
 
 ---
@@ -104,15 +105,48 @@ Any connected peer can send `{type: "claim"}` to take the sender role, demoting 
 
 ---
 
+### Revision 3 → 4 (August 2026 code audit, app v0.8.0)
+
+An in-depth code audit reviewed the deployed client against every claim on this page. Two security findings were fixed before v0.8.0 shipped; four low-severity findings are disclosed as open with scheduled fixes.
+
+**S1: Session code exposed via the URL — resolved in v0.8.0.**
+The app read and pre-filled a session code from a `?code=` URL parameter. A code in the URL rides the HTTP request to the app host and can land in access logs, browser history, or the Referer header — contradicting the property that the raw code never touches the server. The URL parameter was removed; the code is entered manually only. Severity: medium.
+
+**S2: Ephemeral private key exportable — resolved in v0.8.0.**
+The per-session X25519 private key was generated extractable. Nothing exported it, but extractability let a successful XSS export the live private key, and forward secrecy relied on nulling the reference rather than browser enforcement. The key is now generated non-extractable. Severity: low–medium.
+
+**S6: No warning on low-entropy typed codes — resolved in v0.8.0.**
+Length was enforced but entropy was not, so a user could type an obviously weak code (e.g. all-same or sequential characters). A soft, non-blocking warning now nudges toward the generator. Severity: informational.
+
+**S3: Envelope `format` field not authenticated — OPEN, planned for protocol v2.**
+The GCM additional authenticated data binds the counter but not the `format` field; a relay can flip it and the client still decrypts and runs the relay-chosen branch. Demonstrated in a harness. Fix (bind `format` + channel identifier + protocol version into the AAD) is wire-breaking and batched into protocol v2. Severity: low, contained.
+
+**S11: Fixed PBKDF2 salt enables multi-target amplification — OPEN, planned for protocol v2.**
+The salt is a global constant, so key-stretching for a given code is identical across all sessions; a relay logging many handshakes can sweep the keyspace once against all captured sessions rather than per session. Fix (derive the salt per session from the channel identifier) is wire-breaking and batched with S3. Severity: low.
+
+**S4: Relayed decompression not output-bounded — OPEN, scheduled next release.**
+A relayed BBQR compressed payload is inflated with no output ceiling; a small crafted frame can expand enormously (≈1000× measured). Member-gated and download-triggered, but a compromised co-signer could crash a counterpart's tab. Fix: cap inflate output and reject implausible ratios. Severity: low.
+
+**S5: One vendored library lacks verifiable provenance — OPEN, scheduled next release.**
+Two of three inlined libraries hash to their published upstream builds; the QR encoder does not, so the "audit-equals-runtime" guarantee is unprovable for it at its pinned version. No tampering evidence. Fix: reconcile to the canonical build (or document build inputs) and add to a provenance table. Severity: low.
+
+---
+
 ## What remains open
 
-No open findings. The following are tracked as planned improvements:
+Four findings from the August 2026 audit are open, all low-severity and contained within the stated threat model:
+
+**S3 — unauthenticated `format` field** and **S11 — fixed KDF salt.** Both fixes are wire-breaking and batched into the next protocol revision (protocol v2).
+
+**S4 — unbounded relayed decompression** and **S5 — one vendored library's provenance.** Both scheduled for the next release.
+
+The following are tracked as longer-term hardening, not bugs in the current implementation:
 
 **Inline scripts not hash-pinned under CSP.** Replacing `'unsafe-inline'` with explicit sha256 hash entries for each inline block requires a build step to compute and recompute hashes on every edit. Until this is done, the CSP protects exfiltration paths but not in-memory state from a successful XSS.
 
 **meta-tag CSP limitations.** frame-ancestors, report-uri, and sandbox are not honored in a `<meta>` CSP. Setting `frame-ancestors 'none'` via an HTTP response header at the static-hosting layer is recommended to prevent clickjacking.
 
-**PBKDF2 is not memory-hard.** Argon2id or scrypt would be more resistant to GPU-accelerated offline attacks against the session code. Changing the KDF salt is a breaking protocol change requiring a migration plan.
+**PBKDF2 is not memory-hard.** Argon2id or scrypt would be more resistant to GPU-accelerated offline attacks against the session code, but neither is available in the browser's native crypto and vendoring a WASM implementation conflicts with the protocol-crypto no-dependencies rule; deferred pending native support. Raising the generated code length is the cheaper interim lever.
 
 ---
 
@@ -120,8 +154,8 @@ No open findings. The following are tracked as planned improvements:
 
 This review is a thorough manual analysis with direct access to the source. It constitutes a detailed technical review but not a formal third-party security audit. No symbolic verification, fuzzing, or independent reproducibility testing was performed.
 
-The full technical report, including annotated code paths, severity ratings, and the complete finding history from Revisions 1–3, is published at [keylay.org/Keylay_Security_Review_v3.pdf](https://keylay.org/Keylay_Security_Review_v3.pdf).
+The full technical report, including annotated code paths, severity ratings, and the complete finding history from Revisions 1–4, is published at [keylay.org/Keylay_Security_Review_v4.pdf](https://keylay.org/Keylay_Security_Review_v4.pdf).
 
 ---
 
-*Review date: April 2026 (v3 — all open items resolved. Operational fixes: server rate/size/connection limits, session idle + max-lifetime, pre-handshake buffer cap, truncated-IP logging. Documentation corrections: D-04 peer-key-change behavior, D-05 CSP claim scope. Both security.html claims updated to match deployed code.)*
+*Review date: August 2026 (R4 — app v0.8.0. Resolved in v0.8.0: S1 URL code exposure, S2 exportable ephemeral key, S6 low-entropy-code warning. Disclosed open, scheduled: S3 unauthenticated `format` field and S11 fixed KDF salt (protocol v2); S4 unbounded relayed decompression and S5 vendored-library provenance (next release). security.html updated to match. Prior: R3 April 2026 — all then-open items resolved; R1/R2 April 2026.)*

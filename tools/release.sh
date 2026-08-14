@@ -140,8 +140,18 @@ printf 'SHA-256 server.js:   %s\n' "$H_SERVER"
 printf 'verify page:         %s\n' "$VERIFY_STATUS"
 printf '\nNext steps (see RELEASING.md):\n'
 printf '  1. git push origin %s --follow-tags\n' "$BRANCH"
-printf '  2. Deploy: ssh server, cd /var/keylay && git pull && sudo systemctl restart keylay\n'
-printf '  3. Check the live app serves the exact release:\n'
+printf '  2. Deploy (tag-checkout — "git pull" fails on the server, it is detached-HEAD):\n'
+printf '       ssh <server>\n'
+printf '       sudo -u keylay git -C /home/keylay/relay fetch --tags\n'
+printf '       sudo -u keylay git -C /home/keylay/relay checkout %s\n' "$TAG"
+printf '       sudo systemctl restart keylay      # ONLY if server.js changed this release\n'
+printf '  3. Verify the live app serves the exact release:\n'
 printf '       curl -s https://app.keylay.org/ | sha256sum   # must print %s\n' "$H_INDEX"
-printf '  4. Upload website/verify.html to keylay.org\n'
-printf '  5. Cross-post the index.html hash + commit to Nostr and X\n'
+printf '  4. Upload website/verify.html (and any changed pages) to keylay.org\n'
+printf '  5. Publish the note below to Nostr (Keylay npub) and X — do this AFTER step 3 passes.\n'
+printf '\n---------------- copy/paste: Nostr + X release note ----------------\n'
+printf 'Keylay %s released.\n' "$TAG"
+printf 'commit %s\n' "$COMMIT"
+printf 'SHA-256 index.html: %s\n' "$H_INDEX"
+printf 'Verify: https://keylay.org/verify.html — instructions included. Run it locally, trust no host.\n'
+printf -- '--------------------------------------------------------------------\n'
