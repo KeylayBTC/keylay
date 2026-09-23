@@ -77,6 +77,12 @@ The script bumps versions (package.json, index.html footer, console banner), sta
 git push origin main --follow-tags
 ```
 
+### Deploy topology — authoritative paths (do not guess these)
+
+- **App (relay + served `index.html`): `/home/keylay/relay`.** This is the git checkout of the relay repo *and* what the reverse proxy serves. The app lives here — **not** under `public_html`. Deployed by tag-checkout (below); the process manager entry is the pm2 process `keylay`.
+- **Website: repo `/home/keylay/keylay-website`** (remote `git@github.com:KeylayBTC/website.git`) → `rsync` into the web root **`/home/keylay/public_html`**.
+- **The two deploys own separate trees and must never cross.** The website sync uses `rsync --delete`, so it MUST carry `--exclude /app/` and be dry-run first, so it can never delete anything the app owns. Note the loose end: `release-deploy.sh` also `cp`s the app's `index.html` into `public_html/app/`. If nothing actually serves from `public_html/app/`, that copy is legacy and should be removed to end the confusion; until that's confirmed, the `--exclude /app/` guard stays as insurance.
+
 Deploy. On the server, the static `index.html` is served from **`/home/keylay/relay`**, and this box deploys by checking out the release **tag** — it runs in detached-HEAD / tag-deploy mode, so **`git pull` will fail there** ("You are not currently on a branch"). Fetch the new tag and check it out:
 
 ```bash

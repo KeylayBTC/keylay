@@ -6,6 +6,153 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ---
 
+## [0.9.0] — 2026-09-23
+
+Protocol **v2** — this is a **wire-breaking** release. A v2 client cannot complete a
+session with a v1 client: the channel identifier, handshake authentication, session-key
+derivation, and per-message authenticated header all changed. Both peers must run 0.9.0.
+Because the crypto changes and the UR file-handling work are shipped together, this is a
+single hash / website / Nostr cycle rather than two.
+
+### Security (protocol v2)
+
+- **Channel identifier is now derived from a stretched key, not from the raw code.** The
+  identifier the relay sees is `SHA-256("keylay-v2-channel|" || K_code)`, where `K_code` is
+  the session code run through PBKDF2-HMAC-SHA512 (300,000 iterations, fixed domain salt).
+  Previously it was `SHA-256(code)`, which a relay operator could invert offline to recover
+  a short code in about a day; deriving it from the stretched `K_code` removes that offline
+  shortcut. [S12]
+- **Handshake HMAC key and session-key salt now come from the same stretched `K_code`.** A
+  single stretch feeds every code-derived value (channel id, handshake HMAC key, and the
+  HKDF salt for the session key), rather than hashing the raw code separately for each. [S12]
+- **The AES-GCM session key is bound to the channel and both public keys.** Session-key
+  HKDF now uses `info = "keylay-v2-pair|" || channelHash || sorted(both X25519 public keys)`,
+  so a key agreed for one channel/pair cannot be transplanted to another. [A3]
+- **Every message carries an authenticated envelope header.** AES-GCM additional
+  authenticated data is now `"keylay-v2|" || type || channelHash || format || counter`, so
+  the message type, channel, payload format, and replay counter are all cryptographically
+  bound to the ciphertext; a relay that alters any of them causes decryption to fail rather
+  than being silently accepted. [S3]
+- **Handshake KDF upgraded to PBKDF2-HMAC-SHA512.** SHA-512 raises the cost to a GPU
+  attacker at no meaningful cost to a legitimate client, and the 10-character code length is
+  sufficient given the stretch. [SHA-512 rider]
+- **Still open, accepted by design: the PBKDF2 salt is a fixed constant (S11).** Two peers share
+  nothing but the session code before they connect, so the channel identifier must be derivable from
+  the code alone — which means the stretching salt must be a public constant. A relay that logs many
+  channel identifiers can therefore still sweep the code space once against all of them, rather than
+  once per session. What v2 changes is the price of that sweep: each candidate code now costs a full
+  PBKDF2-HMAC-SHA512 stretch instead of a single SHA-256. This is inherent to the design and will not
+  be "fixed"; it is why code length and alphabet matter and why the app warns on weak codes. A
+  memory-hard KDF (Argon2id or scrypt) would raise the per-guess cost further but would not remove
+  the amortization; it also remains blocked on browser support — the browser's native crypto API
+  (Web Crypto) offers PBKDF2 only, and Keylay will not ship a hand-rolled or third-party
+  implementation of a memory-hard KDF. [S11]
+- **Decompression-bomb guard on BBQr 'Z' payloads.** Inflation is capped at 8 MB (far above
+  any real PSBT) and aborts rather than allocating unboundedly on a malicious frame. [S4]
+- **Vendored-library provenance is now verifiable.** All three inlined libraries (jsQR 1.4.0,
+  qrcode 1.5.1, pako 2.1.0) are byte-identical to their published releases; the QR encoder,
+  which previously did not match its published build, has been reconciled. Sources and SHA-256
+  hashes are recorded in `PROVENANCE.md` and on keylay.org/verify.html, and
+  `node tools/verify-vendored.mjs` checks them (it also runs as a release preflight). [S5]
+
+### Added (UR file handling)
+
+- **Native UR (BC-UR) codec — decode and encode, no library dependency.** Keylay now
+  reassembles animated UR fountain sequences (bytewords + fountain codes + minimal CBOR) in
+  original, readable code inlined in `index.html`, rather than a ~200 KB polyfilled bundle. It
+  is validated against `@ngraveio/bc-ur` and `embit` as oracles (77 assertions, including
+  `chooseFragments` matching bit-for-bit, byte-identical part strings, and descriptor
+  checksums matching a known BIP-380 vector); see `tools/UR-CODEC.md`.
+- **Received UR sequences now decode to real files, not raw UR text.** A received
+  `ur:crypto-psbt` / `ur:psbt` downloads as a binary `.psbt`; `ur:bytes` (a finalized
+  transaction) as `.txn`; an output descriptor (`ur:output-descriptor`, `crypto-output`, or a
+  `crypto-account` wrapping one) decodes to the standard `wsh(sortedmulti(...))#checksum`
+  descriptor string a coordinator like Sparrow imports — reconstructed natively from the
+  tagged-CBOR tree, xpubs rebuilt via base58check, checksum per BIP-380. [TF5]
+- **Decoded view for received data.** A text setup artifact (output descriptor) is shown in
+  a selectable box so you can copy just the parts you need into a coordinator. A binary
+  signing artifact (PSBT / raw tx) is not rendered — it shows a "Binary PSBT, N bytes"
+  notice with **Download** and an optional **Copy as base64** (the paste-into-Sparrow
+  bridge). PSBTs are verified on the signing device, not by eye in this app. [Phase A]
+- **Show a received/uploaded item as a scannable animated QR, with a format toggle.** A PSBT
+  or descriptor can be displayed for an air-gapped device to scan off the screen in two
+  formats, offered as a toggle (the one you're *not* viewing appears as a button): **UR —
+  loop** (a fixed set of frames looped; read by UR wallets — Nunchuk, BlueWallet, Keystone,
+  Passport, Jade, SeedSigner, Sparrow; a pass-through of the arrived frames when the data came
+  in as UR) and **BBQr** (read by Coldcard, BlueWallet, Sparrow; Nunchuk does not read BBQr).
+  Format and payload are independent — a descriptor rides in BBQr as file-type `U`, a PSBT as
+  `P`. Each is integrity-checked before display, and a long descriptor gets an animated
+  sequence instead of one dense static QR. [TF2]
+  - *A fountain-code (rateless) UR streaming mode was tried and removed:* BC-UR fountain parts
+    were rejected by every wallet tested (Nunchuk and BlueWallet both fail on them, though
+    BlueWallet reads looping UR and BBQr fine), and no wallet was found that reliably imports
+    an unbounded fountain. Keylay emits only the looping pure fragments, which UR decoders
+    accept.
+- **Save-format dialog now offers the decoded options that were previously stubbed.** For a
+  scanned PSBT: binary `.psbt` and base64. For an output descriptor (including the legacy
+  `crypto-output` tree): plain text. BSMS remains intentionally out of scope — it is saved
+  verbatim when received, never generated — and unsupported types fall back to raw UR.
+
+### Fixed
+
+- **Local QR display without a peer; send-panel controls tidied.** Uploading a file no longer
+  requires a connected peer — you can load a PSBT or descriptor and show it as a QR for a
+  hardware wallet sitting right next to you, no relay involved. (Start Scan still needs a peer,
+  since it relays.) The sender's local UR QR now appears on the *first* click (the display
+  container was staying hidden); the "Show as…" status now says to point your signing device
+  at the screen rather than the ambiguous "hold your signer up until it reads them all"; the
+  Clear button now hides the Show-as-… and Save buttons and wipes the display (it previously
+  left them behind); and a duplicate Clear handler was removed.
+- **Stale data-type label no longer lingers after leaving or swapping roles.** The scanned/
+  received type label (e.g. "Output Descriptor") was only partially cleared: `lastScannedData`
+  was never reset, so the label persisted next to the Start Scan / Claim Sender Role buttons
+  after leaving and rejoining a channel or changing roles. Leave and role change now clear all
+  scanned/received data state and hide every data-dependent control and label.
+- **Receive panel clarified.** The "Received:" label now names the decoded *content* (e.g.
+  "Multisig Wallet Setup", "Output Descriptor") rather than the UR container, so a text file
+  in `ur:bytes` no longer reads "Transaction". The decoded box shows a single instruction
+  directly above it (was two, one pointing the wrong way). The animated-QR status now reads
+  "N frames cycling" and states N is the total number of frames (not how many have been read).
+  The format button offers the *alternate* format from the one already on screen, removing a
+  redundant control and a confusing frame-count mismatch.
+- **A text file wrapped in `ur:bytes` is no longer mislabeled binary.** `ur:bytes` is a
+  generic container that BlueWallet/Coldcard use for a plain-text multisig setup file and
+  that others use for a raw (binary) transaction. Keylay treated all `ur:bytes` as binary, so
+  a setup file showed a "binary — download only" notice instead of readable text. The decoded
+  bytes are now sniffed: PSBT magic or non-text bytes stay binary (raw tx → `.txn`); valid
+  printable UTF-8 (a setup file, descriptor, or BSMS) is shown as text, saved as `.txt`, and
+  labeled by content (e.g. "Multisig Wallet Setup").
+- **Data-type labels now name the content, consistently.** The classifier previously mixed
+  content ("PSBT", "Output Descriptor") with transport ("QR Code", "BBQR", "UR Data"), so a
+  plain-text descriptor even showed "QR Code". It now always names the content — PSBT, Output
+  Descriptor, Wallet Descriptor, Extended Public Key, Bitcoin Address, Transaction, BSMS —
+  detecting plain descriptors, base64/hex PSBTs, xpubs, and addresses, peeking the BBQr
+  file-type byte, and falling back to a plain "Text" only when the content is unknowable.
+- **Send-side type label moved into the "Sent" confirmation.** The standalone type label that
+  sat awkwardly beside the Start Scan / Claim Sender Role buttons is gone; the content type is
+  now reported in the green "Sent (encrypted): <type>" toast. The send toast names the type
+  only — never a payload/address substring, which could match a poisoned look-alike. The
+  receiver's type now reads as a "Received: <type>" header above its action buttons.
+- **Grouped session codes now connect.** The code is displayed grouped for readability
+  (`7k4m · 2xqt · b9`), but the join path only trimmed outer whitespace and lowercased — it
+  did not remove the grouping separators. One participant entering the grouped form and another
+  entering the plain form derived different channel identifiers and never connected, with no
+  error, just an endless "connecting" spinner. `joinChannel` now treats a code's letters and
+  digits as its content and removes every non-alphanumeric character before deriving anything,
+  so any display grouping (or any separator a user improvises) canonicalizes to one channel and
+  the app's own `·`-grouped display round-trips. Content is deliberately not restricted to the
+  generator's alphabet, so user-chosen memorable codes keep working (looksLowEntropy still only
+  warns); a non-ASCII look-alike letter is likewise not alphanumeric and is dropped, so a code
+  carrying one fails to connect rather than silently forming a different channel. This was the
+  app-side manifestation of spec defect KL-SPEC-003 (code normalization was under-specified).
+
+### Notes
+
+- `crypto-hdkey` and `crypto-seed` have no native decoder yet; those download as raw UR text.
+  PSBTs, transactions, and output descriptors (crypto-output / crypto-account) decode natively.
+
+---
+
 ## [0.8.0] — 2026-08-14
 
 Security review follow-up (Phase 0 of the combined remediation plan). No wire-protocol

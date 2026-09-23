@@ -10,10 +10,6 @@ Keylay is alpha software built by a small team. Items here are intentions with r
 
 **Challenge/response pairing.** Out-of-band verification between peers before any transfer, reducing reliance on channel-code secrecy alone.
 
-**BC-UR2 encoding.** Keylay currently decodes UR sequences (Keystone, Passport, Jade, Foundation) but outputs only BBQR and raw QR. Encoding to UR closes the loop for non-Coldcard devices.
-
-**UR decoding to alternate save formats.** Decode received UR payloads into directly usable formats: plain-text descriptors, base64 PSBT, BSMS, JSON. The decoding libraries exist as Node packages and need browser bundling.
-
 **Timed capture mode for fountain-coded QR sequences.** BC-UR2 fountain codes emit more frames than the minimum needed for reconstruction. Today Keylay stops at the minimum; a capture-all-frames mode (time-boxed, with a manual stop) will support exact reproduction workflows.
 
 **Wallet guides.** Step-by-step setup and signing flows for major wallet and coordinator combinations, starting from the existing Sparrow + Coldcard guide.
@@ -24,7 +20,7 @@ Keylay is alpha software built by a small team. Items here are intentions with r
 
 **CSP hash-pinning for inline scripts.** The app ships as a single file with inline `<script>` blocks, so the Content-Security-Policy currently includes `script-src 'unsafe-inline'` — meaning the CSP restricts where an injected script could exfiltrate data, but does not stop one from executing. The fix is replacing `'unsafe-inline'` with per-block `sha256-` hash entries. This is deliberately deferred: every edit to an inline script invalidates its hash, so pinning before the code stabilizes (or before a build step automates rehashing) would make each release error-prone. Until it lands, this is an acknowledged, disclosed gap — see `security.md` and the [security page](https://keylay.org/security.html).
 
-**Memory-hard KDF.** PBKDF2-SHA256 (300,000 iterations) is deliberately conservative but not memory-hard; Argon2id or scrypt would resist GPU-accelerated offline attack on the channel code far better. This is a breaking protocol change and will ship with a migration plan, not as a silent swap.
+**Memory-hard KDF.** PBKDF2-HMAC-SHA512 (300,000 iterations) is deliberately conservative but not memory-hard; Argon2id or scrypt would raise the cost of GPU-accelerated offline guessing of the session code. **This is blocked on browser support, not scheduled.** The browser's native crypto API (Web Crypto) provides PBKDF2 and nothing memory-hard, and Keylay will not ship a hand-rolled or third-party implementation of a KDF — the audit-equals-runtime guarantee depends on every cryptographic primitive coming from the browser. If browsers add Argon2id natively, this becomes a breaking protocol change that ships with a migration plan, not as a silent swap. Note that it would not remove the fixed-salt amortization disclosed as S11 on the security page; that is inherent to deriving a rendezvous identifier from a shared code.
 
 **Formal third-party audit.** The current security review is internal and AI-assisted, published in full. An external audit is planned before Keylay exits alpha.
 
@@ -51,7 +47,9 @@ Smaller items, unscheduled: adjustable QR animation speed; sharing a channel via
 ## Recently completed
 
 - End-to-end encryption: AES-256-GCM, ephemeral X25519, HKDF, HMAC-authenticated handshake
-- BBQR encode/decode (Coldcard) and BC-UR2/UR decode
+- Protocol v2 (v0.9.0): channel identifier derived from the stretched code, authenticated per-message header, session key bound to channel and both public keys, PBKDF2-HMAC-SHA512
+- Native UR (BC-UR) encode and decode, no library dependency (v0.9.0); received PSBTs, transactions, and output descriptors decode to real files, with base64 PSBT and plain-text descriptor save formats
+- BBQR encode/decode (Coldcard)
 - Hosted relay at `wss://app.keylay.org/ws` — rate limiting, session lifetime enforcement, truncated-IP logging
 - Auto-reconnect with exponential backoff and a fresh handshake per reconnect (v0.7.1)
 - Cloud-relay fallback indicator — an amber status state visibly flags when a localhost relay attempt failed and the app rolled over to the hosted relay (v0.7.1)

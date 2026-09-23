@@ -456,6 +456,8 @@
     <h3>Join or Create a Session</h3>
     <p>Coordinate multisig wallet setup and signing across devices</p>
     <input type="text" id="codeInput" placeholder="Enter session code..." maxlength="32" />
+    <small id="codeHint" style="display:block; font-size:12px; color:#888; margin-top:4px;"
+           title="Only letters and digits count as the code; case doesn't matter, and spaces and any other punctuation are removed so a code can be shared grouped for readability. Generated codes leave out look-alike characters (0/o, 1/l, i), but you can still type those in a code you choose yourself.">Not case-sensitive. Only letters and numbers count — spaces and punctuation are ignored.</small>
     <br />
     <button id="generateCodeBtn" class="btn btn-secondary">Generate Random</button>
     <button id="joinChannelBtn" class="btn btn-primary">Join Session</button>
@@ -497,7 +499,8 @@
         <button class="btn btn-secondary">Upload File</button>
         <input type="file" id="fileUploadInput" accept=".psbt,.bsms,.txn,.txt,.json,.ur,.bin">
       </div>
-      <button id="showAsQRBtn" class="btn btn-secondary" style="display:none;">Show as QR for Coldcard</button>
+      <button id="showAsQRBtn" class="btn btn-secondary" style="display:none;" title="Animated QR in the BBQr format, which Coldcard reads.">Show as BBQr QR (Coldcard)</button>
+      <button id="showAsURBtn" class="btn btn-secondary" style="display:none;" title="Animated QR in the UR format, read by non-Coldcard air-gapped devices: Keystone, Passport, Jade, SeedSigner, and Sparrow.">Show as UR QR (most signers)</button>
       <button id="saveScannedBtn" class="btn btn-primary" style="display:none;">Save Scanned Data</button>
     </div>
 
@@ -515,8 +518,20 @@
         <div id="receivedDataType" style="display:none; font-size: 12px; color: #666; margin-bottom: 4px; font-family: monospace;"></div>
         <button id="stopAnimationBtn" class="btn btn-danger">Clear</button>
         <button id="copyReceivedBtn" class="btn btn-secondary">Copy</button>
+        <button id="copyBase64Btn" class="btn btn-secondary" style="display:none;">Copy as base64</button>
+        <button id="showReceivedAsURBtn" class="btn btn-secondary" style="display:none;" title="Show the received data as an animated QR in the UR format. UR is read by Keystone, Passport, Jade, SeedSigner, and Sparrow, among others. Format and payload are independent — try whichever your device accepts.">Show as UR QR (most signers)</button>
+        <button id="showReceivedAsBBQRBtn" class="btn btn-secondary" style="display:none;" title="Show the received data as an animated QR in the BBQr format. BBQr is read by Coldcard and Sparrow, among others. Format and payload are independent — try whichever your device accepts.">Show as BBQr QR (Coldcard, Sparrow)</button>
         <button id="downloadReceivedBtn" class="btn btn-primary">Download</button>
         <div id="downloadNote" style="display:none; font-size:11px; color:#888; margin-top:4px;"></div>
+        <!-- [Phase A] Decoded view for TEXT setup artifacts (output descriptor): the
+             decoded string is shown here so the user can read it and selectively copy
+             the parts they need into a coordinator wallet. Binary artifacts (PSBT/tx)
+             are never rendered here — they get the notice + Download + Copy-as-base64. -->
+        <div id="decodedView" style="display:none; margin-top:8px;">
+          <div id="decodedHeader" style="font-size:11px; color:#666; margin-bottom:4px;">Decoded — select and copy the parts you need below, or use Download:</div>
+          <textarea id="decodedText" readonly spellcheck="false"
+            style="width:100%; min-height:90px; box-sizing:border-box; font-family:monospace; font-size:12px; white-space:pre; overflow:auto; resize:vertical; padding:6px; border:1px solid #ccc; border-radius:4px; background:#fafafa;"></textarea>
+        </div>
       </div>
     </div>
   </div>
@@ -544,8 +559,8 @@
     </div>
   </div>
 
-  <script>/* jsQR v1.4.0 - inlined */
-(function webpackUniversalModuleDefinition(root, factory) {
+  <!-- jsQR 1.4.0 — vendored verbatim; SHA-256 bc40c8a15196236b2314db0856f72ca0b49980cd5413b8c852a7349f5fee0859; source https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js; see PROVENANCE.md -->
+  <script>(function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
 	else if(typeof define === 'function' && define.amd)
@@ -10646,24 +10661,717 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 
 /***/ })
 /******/ ])["default"];
-});
-  </script>
-  <script>/* qrcode v1.5.1 - inlined */
-/**
- * Skipped minification because the original files appears to be already minified.
- * Original file: /npm/qrcode@1.5.1/build/qrcode.js
- *
- * Do NOT use SRI with dynamically generated files! More information: https://www.jsdelivr.com/using-sri-with-dynamic-files
- */
-var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof Promise&&Promise.prototype&&Promise.prototype.then},n=[0,26,44,70,100,134,172,196,242,292,346,404,466,532,581,655,733,815,901,991,1085,1156,1258,1364,1474,1588,1706,1828,1921,2051,2185,2323,2465,2611,2761,2876,3034,3196,3362,3532,3706],o=function(t){if(!t)throw new Error('"version" cannot be null or undefined');if(t<1||t>40)throw new Error('"version" should be in range from 1 to 40');return 4*t+17},a=function(t){return n[t]},i=function(t){for(var r=0;0!==t;)r++,t>>>=1;return r},u=function(t){if("function"!=typeof t)throw new Error('"toSJISFunc" is not a valid function.');r=t},s=function(){return void 0!==r},f=function(t){return r(t)};function h(t,r){return t(r={exports:{}},r.exports),r.exports}var c=h((function(t,r){r.L={bit:1},r.M={bit:0},r.Q={bit:3},r.H={bit:2},r.isValid=function(t){return t&&void 0!==t.bit&&t.bit>=0&&t.bit<4},r.from=function(t,e){if(r.isValid(t))return t;try{return function(t){if("string"!=typeof t)throw new Error("Param is not a string");switch(t.toLowerCase()){case"l":case"low":return r.L;case"m":case"medium":return r.M;case"q":case"quartile":return r.Q;case"h":case"high":return r.H;default:throw new Error("Unknown EC Level: "+t)}}(t)}catch(t){return e}}}));function g(){this.buffer=[],this.length=0}c.L,c.M,c.Q,c.H,c.isValid,g.prototype={get:function(t){var r=Math.floor(t/8);return 1==(this.buffer[r]>>>7-t%8&1)},put:function(t,r){for(var e=0;e<r;e++)this.putBit(1==(t>>>r-e-1&1))},getLengthInBits:function(){return this.length},putBit:function(t){var r=Math.floor(this.length/8);this.buffer.length<=r&&this.buffer.push(0),t&&(this.buffer[r]|=128>>>this.length%8),this.length++}};var d=g;function l(t){if(!t||t<1)throw new Error("BitMatrix size must be defined and greater than 0");this.size=t,this.data=new Uint8Array(t*t),this.reservedBit=new Uint8Array(t*t)}l.prototype.set=function(t,r,e,n){var o=t*this.size+r;this.data[o]=e,n&&(this.reservedBit[o]=!0)},l.prototype.get=function(t,r){return this.data[t*this.size+r]},l.prototype.xor=function(t,r,e){this.data[t*this.size+r]^=e},l.prototype.isReserved=function(t,r){return this.reservedBit[t*this.size+r]};var v=l,p=h((function(t,r){var e=o;r.getRowColCoords=function(t){if(1===t)return[];for(var r=Math.floor(t/7)+2,n=e(t),o=145===n?26:2*Math.ceil((n-13)/(2*r-2)),a=[n-7],i=1;i<r-1;i++)a[i]=a[i-1]-o;return a.push(6),a.reverse()},r.getPositions=function(t){for(var e=[],n=r.getRowColCoords(t),o=n.length,a=0;a<o;a++)for(var i=0;i<o;i++)0===a&&0===i||0===a&&i===o-1||a===o-1&&0===i||e.push([n[a],n[i]]);return e}}));p.getRowColCoords,p.getPositions;var w=o,m=function(t){var r=w(t);return[[0,0],[r-7,0],[0,r-7]]},E=h((function(t,r){r.Patterns={PATTERN000:0,PATTERN001:1,PATTERN010:2,PATTERN011:3,PATTERN100:4,PATTERN101:5,PATTERN110:6,PATTERN111:7};var e=3,n=3,o=40,a=10;function i(t,e,n){switch(t){case r.Patterns.PATTERN000:return(e+n)%2==0;case r.Patterns.PATTERN001:return e%2==0;case r.Patterns.PATTERN010:return n%3==0;case r.Patterns.PATTERN011:return(e+n)%3==0;case r.Patterns.PATTERN100:return(Math.floor(e/2)+Math.floor(n/3))%2==0;case r.Patterns.PATTERN101:return e*n%2+e*n%3==0;case r.Patterns.PATTERN110:return(e*n%2+e*n%3)%2==0;case r.Patterns.PATTERN111:return(e*n%3+(e+n)%2)%2==0;default:throw new Error("bad maskPattern:"+t)}}r.isValid=function(t){return null!=t&&""!==t&&!isNaN(t)&&t>=0&&t<=7},r.from=function(t){return r.isValid(t)?parseInt(t,10):void 0},r.getPenaltyN1=function(t){for(var r=t.size,n=0,o=0,a=0,i=null,u=null,s=0;s<r;s++){o=a=0,i=u=null;for(var f=0;f<r;f++){var h=t.get(s,f);h===i?o++:(o>=5&&(n+=e+(o-5)),i=h,o=1),(h=t.get(f,s))===u?a++:(a>=5&&(n+=e+(a-5)),u=h,a=1)}o>=5&&(n+=e+(o-5)),a>=5&&(n+=e+(a-5))}return n},r.getPenaltyN2=function(t){for(var r=t.size,e=0,o=0;o<r-1;o++)for(var a=0;a<r-1;a++){var i=t.get(o,a)+t.get(o,a+1)+t.get(o+1,a)+t.get(o+1,a+1);4!==i&&0!==i||e++}return e*n},r.getPenaltyN3=function(t){for(var r=t.size,e=0,n=0,a=0,i=0;i<r;i++){n=a=0;for(var u=0;u<r;u++)n=n<<1&2047|t.get(i,u),u>=10&&(1488===n||93===n)&&e++,a=a<<1&2047|t.get(u,i),u>=10&&(1488===a||93===a)&&e++}return e*o},r.getPenaltyN4=function(t){for(var r=0,e=t.data.length,n=0;n<e;n++)r+=t.data[n];return Math.abs(Math.ceil(100*r/e/5)-10)*a},r.applyMask=function(t,r){for(var e=r.size,n=0;n<e;n++)for(var o=0;o<e;o++)r.isReserved(o,n)||r.xor(o,n,i(t,o,n))},r.getBestMask=function(t,e){for(var n=Object.keys(r.Patterns).length,o=0,a=1/0,i=0;i<n;i++){e(i),r.applyMask(i,t);var u=r.getPenaltyN1(t)+r.getPenaltyN2(t)+r.getPenaltyN3(t)+r.getPenaltyN4(t);r.applyMask(i,t),u<a&&(a=u,o=i)}return o}}));E.Patterns,E.isValid,E.getPenaltyN1,E.getPenaltyN2,E.getPenaltyN3,E.getPenaltyN4,E.applyMask,E.getBestMask;var y=[1,1,1,1,1,1,1,1,1,1,2,2,1,2,2,4,1,2,4,4,2,4,4,4,2,4,6,5,2,4,6,6,2,5,8,8,4,5,8,8,4,5,8,11,4,8,10,11,4,9,12,16,4,9,16,16,6,10,12,18,6,10,17,16,6,11,16,19,6,13,18,21,7,14,21,25,8,16,20,25,8,17,23,25,9,17,23,34,9,18,25,30,10,20,27,32,12,21,29,35,12,23,34,37,12,25,34,40,13,26,35,42,14,28,38,45,15,29,40,48,16,31,43,51,17,33,45,54,18,35,48,57,19,37,51,60,19,38,53,63,20,40,56,66,21,43,59,70,22,45,62,74,24,47,65,77,25,49,68,81],A=[7,10,13,17,10,16,22,28,15,26,36,44,20,36,52,64,26,48,72,88,36,64,96,112,40,72,108,130,48,88,132,156,60,110,160,192,72,130,192,224,80,150,224,264,96,176,260,308,104,198,288,352,120,216,320,384,132,240,360,432,144,280,408,480,168,308,448,532,180,338,504,588,196,364,546,650,224,416,600,700,224,442,644,750,252,476,690,816,270,504,750,900,300,560,810,960,312,588,870,1050,336,644,952,1110,360,700,1020,1200,390,728,1050,1260,420,784,1140,1350,450,812,1200,1440,480,868,1290,1530,510,924,1350,1620,540,980,1440,1710,570,1036,1530,1800,570,1064,1590,1890,600,1120,1680,1980,630,1204,1770,2100,660,1260,1860,2220,720,1316,1950,2310,750,1372,2040,2430],I=function(t,r){switch(r){case c.L:return y[4*(t-1)+0];case c.M:return y[4*(t-1)+1];case c.Q:return y[4*(t-1)+2];case c.H:return y[4*(t-1)+3];default:return}},M=function(t,r){switch(r){case c.L:return A[4*(t-1)+0];case c.M:return A[4*(t-1)+1];case c.Q:return A[4*(t-1)+2];case c.H:return A[4*(t-1)+3];default:return}},N=new Uint8Array(512),B=new Uint8Array(256);!function(){for(var t=1,r=0;r<255;r++)N[r]=t,B[t]=r,256&(t<<=1)&&(t^=285);for(var e=255;e<512;e++)N[e]=N[e-255]}();var C=function(t){return N[t]},P=function(t,r){return 0===t||0===r?0:N[B[t]+B[r]]},R=h((function(t,r){r.mul=function(t,r){for(var e=new Uint8Array(t.length+r.length-1),n=0;n<t.length;n++)for(var o=0;o<r.length;o++)e[n+o]^=P(t[n],r[o]);return e},r.mod=function(t,r){for(var e=new Uint8Array(t);e.length-r.length>=0;){for(var n=e[0],o=0;o<r.length;o++)e[o]^=P(r[o],n);for(var a=0;a<e.length&&0===e[a];)a++;e=e.slice(a)}return e},r.generateECPolynomial=function(t){for(var e=new Uint8Array([1]),n=0;n<t;n++)e=r.mul(e,new Uint8Array([1,C(n)]));return e}}));function T(t){this.genPoly=void 0,this.degree=t,this.degree&&this.initialize(this.degree)}R.mul,R.mod,R.generateECPolynomial,T.prototype.initialize=function(t){this.degree=t,this.genPoly=R.generateECPolynomial(this.degree)},T.prototype.encode=function(t){if(!this.genPoly)throw new Error("Encoder not initialized");var r=new Uint8Array(t.length+this.degree);r.set(t);var e=R.mod(r,this.genPoly),n=this.degree-e.length;if(n>0){var o=new Uint8Array(this.degree);return o.set(e,n),o}return e};var L=T,b=function(t){return!isNaN(t)&&t>=1&&t<=40},U="(?:[u3000-u303F]|[u3040-u309F]|[u30A0-u30FF]|[uFF00-uFFEF]|[u4E00-u9FAF]|[u2605-u2606]|[u2190-u2195]|u203B|[u2010u2015u2018u2019u2025u2026u201Cu201Du2225u2260]|[u0391-u0451]|[u00A7u00A8u00B1u00B4u00D7u00F7])+",x="(?:(?![A-Z0-9 $%*+\\-./:]|"+(U=U.replace(/u/g,"\\u"))+")(?:.|[\r\n]))+",k=new RegExp(U,"g"),F=new RegExp("[^A-Z0-9 $%*+\\-./:]+","g"),S=new RegExp(x,"g"),D=new RegExp("[0-9]+","g"),Y=new RegExp("[A-Z $%*+\\-./:]+","g"),_=new RegExp("^"+U+"$"),z=new RegExp("^[0-9]+$"),H=new RegExp("^[A-Z0-9 $%*+\\-./:]+$"),J={KANJI:k,BYTE_KANJI:F,BYTE:S,NUMERIC:D,ALPHANUMERIC:Y,testKanji:function(t){return _.test(t)},testNumeric:function(t){return z.test(t)},testAlphanumeric:function(t){return H.test(t)}},K=h((function(t,r){r.NUMERIC={id:"Numeric",bit:1,ccBits:[10,12,14]},r.ALPHANUMERIC={id:"Alphanumeric",bit:2,ccBits:[9,11,13]},r.BYTE={id:"Byte",bit:4,ccBits:[8,16,16]},r.KANJI={id:"Kanji",bit:8,ccBits:[8,10,12]},r.MIXED={bit:-1},r.getCharCountIndicator=function(t,r){if(!t.ccBits)throw new Error("Invalid mode: "+t);if(!b(r))throw new Error("Invalid version: "+r);return r>=1&&r<10?t.ccBits[0]:r<27?t.ccBits[1]:t.ccBits[2]},r.getBestModeForData=function(t){return J.testNumeric(t)?r.NUMERIC:J.testAlphanumeric(t)?r.ALPHANUMERIC:J.testKanji(t)?r.KANJI:r.BYTE},r.toString=function(t){if(t&&t.id)return t.id;throw new Error("Invalid mode")},r.isValid=function(t){return t&&t.bit&&t.ccBits},r.from=function(t,e){if(r.isValid(t))return t;try{return function(t){if("string"!=typeof t)throw new Error("Param is not a string");switch(t.toLowerCase()){case"numeric":return r.NUMERIC;case"alphanumeric":return r.ALPHANUMERIC;case"kanji":return r.KANJI;case"byte":return r.BYTE;default:throw new Error("Unknown mode: "+t)}}(t)}catch(t){return e}}}));K.NUMERIC,K.ALPHANUMERIC,K.BYTE,K.KANJI,K.MIXED,K.getCharCountIndicator,K.getBestModeForData,K.isValid;var O=h((function(t,r){var e=i(7973);function n(t,r){return K.getCharCountIndicator(t,r)+4}function o(t,r){var e=0;return t.forEach((function(t){var o=n(t.mode,r);e+=o+t.getBitsLength()})),e}r.from=function(t,r){return b(t)?parseInt(t,10):r},r.getCapacity=function(t,r,e){if(!b(t))throw new Error("Invalid QR Code version");void 0===e&&(e=K.BYTE);var o=8*(a(t)-M(t,r));if(e===K.MIXED)return o;var i=o-n(e,t);switch(e){case K.NUMERIC:return Math.floor(i/10*3);case K.ALPHANUMERIC:return Math.floor(i/11*2);case K.KANJI:return Math.floor(i/13);case K.BYTE:default:return Math.floor(i/8)}},r.getBestVersionForData=function(t,e){var n,a=c.from(e,c.M);if(Array.isArray(t)){if(t.length>1)return function(t,e){for(var n=1;n<=40;n++){if(o(t,n)<=r.getCapacity(n,e,K.MIXED))return n}}(t,a);if(0===t.length)return 1;n=t[0]}else n=t;return function(t,e,n){for(var o=1;o<=40;o++)if(e<=r.getCapacity(o,n,t))return o}(n.mode,n.getLength(),a)},r.getEncodedBits=function(t){if(!b(t)||t<7)throw new Error("Invalid QR Code version");for(var r=t<<12;i(r)-e>=0;)r^=7973<<i(r)-e;return t<<12|r}}));O.getCapacity,O.getBestVersionForData,O.getEncodedBits;var Q=i(1335),V=function(t,r){for(var e=t.bit<<3|r,n=e<<10;i(n)-Q>=0;)n^=1335<<i(n)-Q;return 21522^(e<<10|n)};function q(t){this.mode=K.NUMERIC,this.data=t.toString()}q.getBitsLength=function(t){return 10*Math.floor(t/3)+(t%3?t%3*3+1:0)},q.prototype.getLength=function(){return this.data.length},q.prototype.getBitsLength=function(){return q.getBitsLength(this.data.length)},q.prototype.write=function(t){var r,e,n;for(r=0;r+3<=this.data.length;r+=3)e=this.data.substr(r,3),n=parseInt(e,10),t.put(n,10);var o=this.data.length-r;o>0&&(e=this.data.substr(r),n=parseInt(e,10),t.put(n,3*o+1))};var j=q,$=["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"," ","$","%","*","+","-",".","/",":"];function X(t){this.mode=K.ALPHANUMERIC,this.data=t}X.getBitsLength=function(t){return 11*Math.floor(t/2)+t%2*6},X.prototype.getLength=function(){return this.data.length},X.prototype.getBitsLength=function(){return X.getBitsLength(this.data.length)},X.prototype.write=function(t){var r;for(r=0;r+2<=this.data.length;r+=2){var e=45*$.indexOf(this.data[r]);e+=$.indexOf(this.data[r+1]),t.put(e,11)}this.data.length%2&&t.put($.indexOf(this.data[r]),6)};var Z=X;function W(t){this.mode=K.BYTE,"string"==typeof t&&(t=function(t){for(var r=[],e=t.length,n=0;n<e;n++){var o=t.charCodeAt(n);if(o>=55296&&o<=56319&&e>n+1){var a=t.charCodeAt(n+1);a>=56320&&a<=57343&&(o=1024*(o-55296)+a-56320+65536,n+=1)}o<128?r.push(o):o<2048?(r.push(o>>6|192),r.push(63&o|128)):o<55296||o>=57344&&o<65536?(r.push(o>>12|224),r.push(o>>6&63|128),r.push(63&o|128)):o>=65536&&o<=1114111?(r.push(o>>18|240),r.push(o>>12&63|128),r.push(o>>6&63|128),r.push(63&o|128)):r.push(239,191,189)}return new Uint8Array(r).buffer}(t)),this.data=new Uint8Array(t)}W.getBitsLength=function(t){return 8*t},W.prototype.getLength=function(){return this.data.length},W.prototype.getBitsLength=function(){return W.getBitsLength(this.data.length)},W.prototype.write=function(t){for(var r=0,e=this.data.length;r<e;r++)t.put(this.data[r],8)};var G=W;function tt(t){this.mode=K.KANJI,this.data=t}tt.getBitsLength=function(t){return 13*t},tt.prototype.getLength=function(){return this.data.length},tt.prototype.getBitsLength=function(){return tt.getBitsLength(this.data.length)},tt.prototype.write=function(t){var r;for(r=0;r<this.data.length;r++){var e=f(this.data[r]);if(e>=33088&&e<=40956)e-=33088;else{if(!(e>=57408&&e<=60351))throw new Error("Invalid SJIS character: "+this.data[r]+"\nMake sure your charset is UTF-8");e-=49472}e=192*(e>>>8&255)+(255&e),t.put(e,13)}};var rt=tt,et=h((function(t){var r={single_source_shortest_paths:function(t,e,n){var o={},a={};a[e]=0;var i,u,s,f,h,c,g,d=r.PriorityQueue.make();for(d.push(e,0);!d.empty();)for(s in u=(i=d.pop()).value,f=i.cost,h=t[u]||{})h.hasOwnProperty(s)&&(c=f+h[s],g=a[s],(void 0===a[s]||g>c)&&(a[s]=c,d.push(s,c),o[s]=u));if(void 0!==n&&void 0===a[n]){var l=["Could not find a path from ",e," to ",n,"."].join("");throw new Error(l)}return o},extract_shortest_path_from_predecessor_list:function(t,r){for(var e=[],n=r;n;)e.push(n),n=t[n];return e.reverse(),e},find_path:function(t,e,n){var o=r.single_source_shortest_paths(t,e,n);return r.extract_shortest_path_from_predecessor_list(o,n)},PriorityQueue:{make:function(t){var e,n=r.PriorityQueue,o={};for(e in t=t||{},n)n.hasOwnProperty(e)&&(o[e]=n[e]);return o.queue=[],o.sorter=t.sorter||n.default_sorter,o},default_sorter:function(t,r){return t.cost-r.cost},push:function(t,r){var e={value:t,cost:r};this.queue.push(e),this.queue.sort(this.sorter)},pop:function(){return this.queue.shift()},empty:function(){return 0===this.queue.length}}};t.exports=r})),nt=h((function(t,r){function e(t){return unescape(encodeURIComponent(t)).length}function n(t,r,e){for(var n,o=[];null!==(n=t.exec(e));)o.push({data:n[0],index:n.index,mode:r,length:n[0].length});return o}function o(t){var r,e,o=n(J.NUMERIC,K.NUMERIC,t),a=n(J.ALPHANUMERIC,K.ALPHANUMERIC,t);return s()?(r=n(J.BYTE,K.BYTE,t),e=n(J.KANJI,K.KANJI,t)):(r=n(J.BYTE_KANJI,K.BYTE,t),e=[]),o.concat(a,r,e).sort((function(t,r){return t.index-r.index})).map((function(t){return{data:t.data,mode:t.mode,length:t.length}}))}function a(t,r){switch(r){case K.NUMERIC:return j.getBitsLength(t);case K.ALPHANUMERIC:return Z.getBitsLength(t);case K.KANJI:return rt.getBitsLength(t);case K.BYTE:return G.getBitsLength(t)}}function i(t,r){var e,n=K.getBestModeForData(t);if((e=K.from(r,n))!==K.BYTE&&e.bit<n.bit)throw new Error('"'+t+'" cannot be encoded with mode '+K.toString(e)+".\n Suggested mode is: "+K.toString(n));switch(e!==K.KANJI||s()||(e=K.BYTE),e){case K.NUMERIC:return new j(t);case K.ALPHANUMERIC:return new Z(t);case K.KANJI:return new rt(t);case K.BYTE:return new G(t)}}r.fromArray=function(t){return t.reduce((function(t,r){return"string"==typeof r?t.push(i(r,null)):r.data&&t.push(i(r.data,r.mode)),t}),[])},r.fromString=function(t,n){for(var i=function(t,r){for(var e={},n={start:{}},o=["start"],i=0;i<t.length;i++){for(var u=t[i],s=[],f=0;f<u.length;f++){var h=u[f],c=""+i+f;s.push(c),e[c]={node:h,lastCount:0},n[c]={};for(var g=0;g<o.length;g++){var d=o[g];e[d]&&e[d].node.mode===h.mode?(n[d][c]=a(e[d].lastCount+h.length,h.mode)-a(e[d].lastCount,h.mode),e[d].lastCount+=h.length):(e[d]&&(e[d].lastCount=h.length),n[d][c]=a(h.length,h.mode)+4+K.getCharCountIndicator(h.mode,r))}}o=s}for(var l=0;l<o.length;l++)n[o[l]].end=0;return{map:n,table:e}}(function(t){for(var r=[],n=0;n<t.length;n++){var o=t[n];switch(o.mode){case K.NUMERIC:r.push([o,{data:o.data,mode:K.ALPHANUMERIC,length:o.length},{data:o.data,mode:K.BYTE,length:o.length}]);break;case K.ALPHANUMERIC:r.push([o,{data:o.data,mode:K.BYTE,length:o.length}]);break;case K.KANJI:r.push([o,{data:o.data,mode:K.BYTE,length:e(o.data)}]);break;case K.BYTE:r.push([{data:o.data,mode:K.BYTE,length:e(o.data)}])}}return r}(o(t)),n),u=et.find_path(i.map,"start","end"),s=[],f=1;f<u.length-1;f++)s.push(i.table[u[f]].node);return r.fromArray(function(t){return t.reduce((function(t,r){var e=t.length-1>=0?t[t.length-1]:null;return e&&e.mode===r.mode?(t[t.length-1].data+=r.data,t):(t.push(r),t)}),[])}(s))},r.rawSplit=function(t){return r.fromArray(o(t))}}));function ot(t,r,e){var n,o,a=t.size,i=V(r,e);for(n=0;n<15;n++)o=1==(i>>n&1),n<6?t.set(n,8,o,!0):n<8?t.set(n+1,8,o,!0):t.set(a-15+n,8,o,!0),n<8?t.set(8,a-n-1,o,!0):n<9?t.set(8,15-n-1+1,o,!0):t.set(8,15-n-1,o,!0);t.set(a-8,8,1,!0)}function at(t,r,e){var n=new d;e.forEach((function(r){n.put(r.mode.bit,4),n.put(r.getLength(),K.getCharCountIndicator(r.mode,t)),r.write(n)}));var o=8*(a(t)-M(t,r));for(n.getLengthInBits()+4<=o&&n.put(0,4);n.getLengthInBits()%8!=0;)n.putBit(0);for(var i=(o-n.getLengthInBits())/8,u=0;u<i;u++)n.put(u%2?17:236,8);return function(t,r,e){for(var n=a(r),o=M(r,e),i=n-o,u=I(r,e),s=u-n%u,f=Math.floor(n/u),h=Math.floor(i/u),c=h+1,g=f-h,d=new L(g),l=0,v=new Array(u),p=new Array(u),w=0,m=new Uint8Array(t.buffer),E=0;E<u;E++){var y=E<s?h:c;v[E]=m.slice(l,l+y),p[E]=d.encode(v[E]),l+=y,w=Math.max(w,y)}var A,N,B=new Uint8Array(n),C=0;for(A=0;A<w;A++)for(N=0;N<u;N++)A<v[N].length&&(B[C++]=v[N][A]);for(A=0;A<g;A++)for(N=0;N<u;N++)B[C++]=p[N][A];return B}(n,t,r)}function it(t,r,e,n){var a;if(Array.isArray(t))a=nt.fromArray(t);else{if("string"!=typeof t)throw new Error("Invalid data");var i=r;if(!i){var u=nt.rawSplit(t);i=O.getBestVersionForData(u,e)}a=nt.fromString(t,i||40)}var s=O.getBestVersionForData(a,e);if(!s)throw new Error("The amount of data is too big to be stored in a QR Code");if(r){if(r<s)throw new Error("\nThe chosen QR Code version cannot contain this amount of data.\nMinimum version required to store current data is: "+s+".\n")}else r=s;var f=at(r,e,a),h=o(r),c=new v(h);return function(t,r){for(var e=t.size,n=m(r),o=0;o<n.length;o++)for(var a=n[o][0],i=n[o][1],u=-1;u<=7;u++)if(!(a+u<=-1||e<=a+u))for(var s=-1;s<=7;s++)i+s<=-1||e<=i+s||(u>=0&&u<=6&&(0===s||6===s)||s>=0&&s<=6&&(0===u||6===u)||u>=2&&u<=4&&s>=2&&s<=4?t.set(a+u,i+s,!0,!0):t.set(a+u,i+s,!1,!0))}(c,r),function(t){for(var r=t.size,e=8;e<r-8;e++){var n=e%2==0;t.set(e,6,n,!0),t.set(6,e,n,!0)}}(c),function(t,r){for(var e=p.getPositions(r),n=0;n<e.length;n++)for(var o=e[n][0],a=e[n][1],i=-2;i<=2;i++)for(var u=-2;u<=2;u++)-2===i||2===i||-2===u||2===u||0===i&&0===u?t.set(o+i,a+u,!0,!0):t.set(o+i,a+u,!1,!0)}(c,r),ot(c,e,0),r>=7&&function(t,r){for(var e,n,o,a=t.size,i=O.getEncodedBits(r),u=0;u<18;u++)e=Math.floor(u/3),n=u%3+a-8-3,o=1==(i>>u&1),t.set(e,n,o,!0),t.set(n,e,o,!0)}(c,r),function(t,r){for(var e=t.size,n=-1,o=e-1,a=7,i=0,u=e-1;u>0;u-=2)for(6===u&&u--;;){for(var s=0;s<2;s++)if(!t.isReserved(o,u-s)){var f=!1;i<r.length&&(f=1==(r[i]>>>a&1)),t.set(o,u-s,f),-1===--a&&(i++,a=7)}if((o+=n)<0||e<=o){o-=n,n=-n;break}}}(c,f),isNaN(n)&&(n=E.getBestMask(c,ot.bind(null,c,e))),E.applyMask(n,c),ot(c,e,n),{modules:c,version:r,errorCorrectionLevel:e,maskPattern:n,segments:a}}nt.fromArray,nt.fromString,nt.rawSplit;var ut=function(t,r){if(void 0===t||""===t)throw new Error("No input text");var e,n,o=c.M;return void 0!==r&&(o=c.from(r.errorCorrectionLevel,c.M),e=O.from(r.version),n=E.from(r.maskPattern),r.toSJISFunc&&u(r.toSJISFunc)),it(t,e,o,n)},st=h((function(t,r){function e(t){if("number"==typeof t&&(t=t.toString()),"string"!=typeof t)throw new Error("Color should be defined as hex string");var r=t.slice().replace("#","").split("");if(r.length<3||5===r.length||r.length>8)throw new Error("Invalid hex color: "+t);3!==r.length&&4!==r.length||(r=Array.prototype.concat.apply([],r.map((function(t){return[t,t]})))),6===r.length&&r.push("F","F");var e=parseInt(r.join(""),16);return{r:e>>24&255,g:e>>16&255,b:e>>8&255,a:255&e,hex:"#"+r.slice(0,6).join("")}}r.getOptions=function(t){t||(t={}),t.color||(t.color={});var r=void 0===t.margin||null===t.margin||t.margin<0?4:t.margin,n=t.width&&t.width>=21?t.width:void 0,o=t.scale||4;return{width:n,scale:n?4:o,margin:r,color:{dark:e(t.color.dark||"#000000ff"),light:e(t.color.light||"#ffffffff")},type:t.type,rendererOpts:t.rendererOpts||{}}},r.getScale=function(t,r){return r.width&&r.width>=t+2*r.margin?r.width/(t+2*r.margin):r.scale},r.getImageWidth=function(t,e){var n=r.getScale(t,e);return Math.floor((t+2*e.margin)*n)},r.qrToImageData=function(t,e,n){for(var o=e.modules.size,a=e.modules.data,i=r.getScale(o,n),u=Math.floor((o+2*n.margin)*i),s=n.margin*i,f=[n.color.light,n.color.dark],h=0;h<u;h++)for(var c=0;c<u;c++){var g=4*(h*u+c),d=n.color.light;if(h>=s&&c>=s&&h<u-s&&c<u-s)d=f[a[Math.floor((h-s)/i)*o+Math.floor((c-s)/i)]?1:0];t[g++]=d.r,t[g++]=d.g,t[g++]=d.b,t[g]=d.a}}}));st.getOptions,st.getScale,st.getImageWidth,st.qrToImageData;var ft=h((function(t,r){r.render=function(t,r,e){var n=e,o=r;void 0!==n||r&&r.getContext||(n=r,r=void 0),r||(o=function(){try{return document.createElement("canvas")}catch(t){throw new Error("You need to specify a canvas element")}}()),n=st.getOptions(n);var a=st.getImageWidth(t.modules.size,n),i=o.getContext("2d"),u=i.createImageData(a,a);return st.qrToImageData(u.data,t,n),function(t,r,e){t.clearRect(0,0,r.width,r.height),r.style||(r.style={}),r.height=e,r.width=e,r.style.height=e+"px",r.style.width=e+"px"}(i,o,a),i.putImageData(u,0,0),o},r.renderToDataURL=function(t,e,n){var o=n;void 0!==o||e&&e.getContext||(o=e,e=void 0),o||(o={});var a=r.render(t,e,o),i=o.type||"image/png",u=o.rendererOpts||{};return a.toDataURL(i,u.quality)}}));function ht(t,r){var e=t.a/255,n=r+'="'+t.hex+'"';return e<1?n+" "+r+'-opacity="'+e.toFixed(2).slice(1)+'"':n}function ct(t,r,e){var n=t+r;return void 0!==e&&(n+=" "+e),n}ft.render,ft.renderToDataURL;var gt=function(t,r,e){var n=st.getOptions(r),o=t.modules.size,a=t.modules.data,i=o+2*n.margin,u=n.color.light.a?"<path "+ht(n.color.light,"fill")+' d="M0 0h'+i+"v"+i+'H0z"/>':"",s="<path "+ht(n.color.dark,"stroke")+' d="'+function(t,r,e){for(var n="",o=0,a=!1,i=0,u=0;u<t.length;u++){var s=Math.floor(u%r),f=Math.floor(u/r);s||a||(a=!0),t[u]?(i++,u>0&&s>0&&t[u-1]||(n+=a?ct("M",s+e,.5+f+e):ct("m",o,0),o=0,a=!1),s+1<r&&t[u+1]||(n+=ct("h",i),i=0)):o++}return n}(a,o,n.margin)+'"/>',f='viewBox="0 0 '+i+" "+i+'"',h='<svg xmlns="http://www.w3.org/2000/svg" '+(n.width?'width="'+n.width+'" height="'+n.width+'" ':"")+f+' shape-rendering="crispEdges">'+u+s+"</svg>\n";return"function"==typeof e&&e(null,h),h};function dt(t,r,n,o,a){var i=[].slice.call(arguments,1),u=i.length,s="function"==typeof i[u-1];if(!s&&!e())throw new Error("Callback required as last argument");if(!s){if(u<1)throw new Error("Too few arguments provided");return 1===u?(n=r,r=o=void 0):2!==u||r.getContext||(o=n,n=r,r=void 0),new Promise((function(e,a){try{var i=ut(n,o);e(t(i,r,o))}catch(t){a(t)}}))}if(u<2)throw new Error("Too few arguments provided");2===u?(a=n,n=r,r=o=void 0):3===u&&(r.getContext&&void 0===a?(a=o,o=void 0):(a=o,o=n,n=r,r=void 0));try{var f=ut(n,o);a(null,t(f,r,o))}catch(t){a(t)}}var lt=ut,vt=dt.bind(null,ft.render),pt=dt.bind(null,ft.renderToDataURL),wt=dt.bind(null,(function(t,r,e){return gt(t,e)})),mt={create:lt,toCanvas:vt,toDataURL:pt,toString:wt};return t.create=lt,t.default=mt,t.toCanvas=vt,t.toDataURL=pt,t.toString=wt,Object.defineProperty(t,"__esModule",{value:!0}),t}({});
-
-  </script>
+});</script>
+  <!-- qrcode 1.5.1 — vendored verbatim; SHA-256 ba588dfaf738bf8980e5da3b680ab1ce3f205af7577454c16f9c0506fe744df4; source https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.js; see PROVENANCE.md -->
+  <script>var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof Promise&&Promise.prototype&&Promise.prototype.then},n=[0,26,44,70,100,134,172,196,242,292,346,404,466,532,581,655,733,815,901,991,1085,1156,1258,1364,1474,1588,1706,1828,1921,2051,2185,2323,2465,2611,2761,2876,3034,3196,3362,3532,3706],o=function(t){if(!t)throw new Error('"version" cannot be null or undefined');if(t<1||t>40)throw new Error('"version" should be in range from 1 to 40');return 4*t+17},a=function(t){return n[t]},i=function(t){for(var r=0;0!==t;)r++,t>>>=1;return r},u=function(t){if("function"!=typeof t)throw new Error('"toSJISFunc" is not a valid function.');r=t},s=function(){return void 0!==r},f=function(t){return r(t)};function h(t,r){return t(r={exports:{}},r.exports),r.exports}var c=h((function(t,r){r.L={bit:1},r.M={bit:0},r.Q={bit:3},r.H={bit:2},r.isValid=function(t){return t&&void 0!==t.bit&&t.bit>=0&&t.bit<4},r.from=function(t,e){if(r.isValid(t))return t;try{return function(t){if("string"!=typeof t)throw new Error("Param is not a string");switch(t.toLowerCase()){case"l":case"low":return r.L;case"m":case"medium":return r.M;case"q":case"quartile":return r.Q;case"h":case"high":return r.H;default:throw new Error("Unknown EC Level: "+t)}}(t)}catch(t){return e}}}));function g(){this.buffer=[],this.length=0}c.L,c.M,c.Q,c.H,c.isValid,g.prototype={get:function(t){var r=Math.floor(t/8);return 1==(this.buffer[r]>>>7-t%8&1)},put:function(t,r){for(var e=0;e<r;e++)this.putBit(1==(t>>>r-e-1&1))},getLengthInBits:function(){return this.length},putBit:function(t){var r=Math.floor(this.length/8);this.buffer.length<=r&&this.buffer.push(0),t&&(this.buffer[r]|=128>>>this.length%8),this.length++}};var d=g;function l(t){if(!t||t<1)throw new Error("BitMatrix size must be defined and greater than 0");this.size=t,this.data=new Uint8Array(t*t),this.reservedBit=new Uint8Array(t*t)}l.prototype.set=function(t,r,e,n){var o=t*this.size+r;this.data[o]=e,n&&(this.reservedBit[o]=!0)},l.prototype.get=function(t,r){return this.data[t*this.size+r]},l.prototype.xor=function(t,r,e){this.data[t*this.size+r]^=e},l.prototype.isReserved=function(t,r){return this.reservedBit[t*this.size+r]};var v=l,p=h((function(t,r){var e=o;r.getRowColCoords=function(t){if(1===t)return[];for(var r=Math.floor(t/7)+2,n=e(t),o=145===n?26:2*Math.ceil((n-13)/(2*r-2)),a=[n-7],i=1;i<r-1;i++)a[i]=a[i-1]-o;return a.push(6),a.reverse()},r.getPositions=function(t){for(var e=[],n=r.getRowColCoords(t),o=n.length,a=0;a<o;a++)for(var i=0;i<o;i++)0===a&&0===i||0===a&&i===o-1||a===o-1&&0===i||e.push([n[a],n[i]]);return e}}));p.getRowColCoords,p.getPositions;var w=o,m=function(t){var r=w(t);return[[0,0],[r-7,0],[0,r-7]]},E=h((function(t,r){r.Patterns={PATTERN000:0,PATTERN001:1,PATTERN010:2,PATTERN011:3,PATTERN100:4,PATTERN101:5,PATTERN110:6,PATTERN111:7};var e=3,n=3,o=40,a=10;function i(t,e,n){switch(t){case r.Patterns.PATTERN000:return(e+n)%2==0;case r.Patterns.PATTERN001:return e%2==0;case r.Patterns.PATTERN010:return n%3==0;case r.Patterns.PATTERN011:return(e+n)%3==0;case r.Patterns.PATTERN100:return(Math.floor(e/2)+Math.floor(n/3))%2==0;case r.Patterns.PATTERN101:return e*n%2+e*n%3==0;case r.Patterns.PATTERN110:return(e*n%2+e*n%3)%2==0;case r.Patterns.PATTERN111:return(e*n%3+(e+n)%2)%2==0;default:throw new Error("bad maskPattern:"+t)}}r.isValid=function(t){return null!=t&&""!==t&&!isNaN(t)&&t>=0&&t<=7},r.from=function(t){return r.isValid(t)?parseInt(t,10):void 0},r.getPenaltyN1=function(t){for(var r=t.size,n=0,o=0,a=0,i=null,u=null,s=0;s<r;s++){o=a=0,i=u=null;for(var f=0;f<r;f++){var h=t.get(s,f);h===i?o++:(o>=5&&(n+=e+(o-5)),i=h,o=1),(h=t.get(f,s))===u?a++:(a>=5&&(n+=e+(a-5)),u=h,a=1)}o>=5&&(n+=e+(o-5)),a>=5&&(n+=e+(a-5))}return n},r.getPenaltyN2=function(t){for(var r=t.size,e=0,o=0;o<r-1;o++)for(var a=0;a<r-1;a++){var i=t.get(o,a)+t.get(o,a+1)+t.get(o+1,a)+t.get(o+1,a+1);4!==i&&0!==i||e++}return e*n},r.getPenaltyN3=function(t){for(var r=t.size,e=0,n=0,a=0,i=0;i<r;i++){n=a=0;for(var u=0;u<r;u++)n=n<<1&2047|t.get(i,u),u>=10&&(1488===n||93===n)&&e++,a=a<<1&2047|t.get(u,i),u>=10&&(1488===a||93===a)&&e++}return e*o},r.getPenaltyN4=function(t){for(var r=0,e=t.data.length,n=0;n<e;n++)r+=t.data[n];return Math.abs(Math.ceil(100*r/e/5)-10)*a},r.applyMask=function(t,r){for(var e=r.size,n=0;n<e;n++)for(var o=0;o<e;o++)r.isReserved(o,n)||r.xor(o,n,i(t,o,n))},r.getBestMask=function(t,e){for(var n=Object.keys(r.Patterns).length,o=0,a=1/0,i=0;i<n;i++){e(i),r.applyMask(i,t);var u=r.getPenaltyN1(t)+r.getPenaltyN2(t)+r.getPenaltyN3(t)+r.getPenaltyN4(t);r.applyMask(i,t),u<a&&(a=u,o=i)}return o}}));E.Patterns,E.isValid,E.getPenaltyN1,E.getPenaltyN2,E.getPenaltyN3,E.getPenaltyN4,E.applyMask,E.getBestMask;var y=[1,1,1,1,1,1,1,1,1,1,2,2,1,2,2,4,1,2,4,4,2,4,4,4,2,4,6,5,2,4,6,6,2,5,8,8,4,5,8,8,4,5,8,11,4,8,10,11,4,9,12,16,4,9,16,16,6,10,12,18,6,10,17,16,6,11,16,19,6,13,18,21,7,14,21,25,8,16,20,25,8,17,23,25,9,17,23,34,9,18,25,30,10,20,27,32,12,21,29,35,12,23,34,37,12,25,34,40,13,26,35,42,14,28,38,45,15,29,40,48,16,31,43,51,17,33,45,54,18,35,48,57,19,37,51,60,19,38,53,63,20,40,56,66,21,43,59,70,22,45,62,74,24,47,65,77,25,49,68,81],A=[7,10,13,17,10,16,22,28,15,26,36,44,20,36,52,64,26,48,72,88,36,64,96,112,40,72,108,130,48,88,132,156,60,110,160,192,72,130,192,224,80,150,224,264,96,176,260,308,104,198,288,352,120,216,320,384,132,240,360,432,144,280,408,480,168,308,448,532,180,338,504,588,196,364,546,650,224,416,600,700,224,442,644,750,252,476,690,816,270,504,750,900,300,560,810,960,312,588,870,1050,336,644,952,1110,360,700,1020,1200,390,728,1050,1260,420,784,1140,1350,450,812,1200,1440,480,868,1290,1530,510,924,1350,1620,540,980,1440,1710,570,1036,1530,1800,570,1064,1590,1890,600,1120,1680,1980,630,1204,1770,2100,660,1260,1860,2220,720,1316,1950,2310,750,1372,2040,2430],I=function(t,r){switch(r){case c.L:return y[4*(t-1)+0];case c.M:return y[4*(t-1)+1];case c.Q:return y[4*(t-1)+2];case c.H:return y[4*(t-1)+3];default:return}},M=function(t,r){switch(r){case c.L:return A[4*(t-1)+0];case c.M:return A[4*(t-1)+1];case c.Q:return A[4*(t-1)+2];case c.H:return A[4*(t-1)+3];default:return}},N=new Uint8Array(512),B=new Uint8Array(256);!function(){for(var t=1,r=0;r<255;r++)N[r]=t,B[t]=r,256&(t<<=1)&&(t^=285);for(var e=255;e<512;e++)N[e]=N[e-255]}();var C=function(t){return N[t]},P=function(t,r){return 0===t||0===r?0:N[B[t]+B[r]]},R=h((function(t,r){r.mul=function(t,r){for(var e=new Uint8Array(t.length+r.length-1),n=0;n<t.length;n++)for(var o=0;o<r.length;o++)e[n+o]^=P(t[n],r[o]);return e},r.mod=function(t,r){for(var e=new Uint8Array(t);e.length-r.length>=0;){for(var n=e[0],o=0;o<r.length;o++)e[o]^=P(r[o],n);for(var a=0;a<e.length&&0===e[a];)a++;e=e.slice(a)}return e},r.generateECPolynomial=function(t){for(var e=new Uint8Array([1]),n=0;n<t;n++)e=r.mul(e,new Uint8Array([1,C(n)]));return e}}));function T(t){this.genPoly=void 0,this.degree=t,this.degree&&this.initialize(this.degree)}R.mul,R.mod,R.generateECPolynomial,T.prototype.initialize=function(t){this.degree=t,this.genPoly=R.generateECPolynomial(this.degree)},T.prototype.encode=function(t){if(!this.genPoly)throw new Error("Encoder not initialized");var r=new Uint8Array(t.length+this.degree);r.set(t);var e=R.mod(r,this.genPoly),n=this.degree-e.length;if(n>0){var o=new Uint8Array(this.degree);return o.set(e,n),o}return e};var L=T,b=function(t){return!isNaN(t)&&t>=1&&t<=40},U="(?:[u3000-u303F]|[u3040-u309F]|[u30A0-u30FF]|[uFF00-uFFEF]|[u4E00-u9FAF]|[u2605-u2606]|[u2190-u2195]|u203B|[u2010u2015u2018u2019u2025u2026u201Cu201Du2225u2260]|[u0391-u0451]|[u00A7u00A8u00B1u00B4u00D7u00F7])+",x="(?:(?![A-Z0-9 $%*+\\-./:]|"+(U=U.replace(/u/g,"\\u"))+")(?:.|[\r\n]))+",k=new RegExp(U,"g"),F=new RegExp("[^A-Z0-9 $%*+\\-./:]+","g"),S=new RegExp(x,"g"),D=new RegExp("[0-9]+","g"),Y=new RegExp("[A-Z $%*+\\-./:]+","g"),_=new RegExp("^"+U+"$"),z=new RegExp("^[0-9]+$"),H=new RegExp("^[A-Z0-9 $%*+\\-./:]+$"),J={KANJI:k,BYTE_KANJI:F,BYTE:S,NUMERIC:D,ALPHANUMERIC:Y,testKanji:function(t){return _.test(t)},testNumeric:function(t){return z.test(t)},testAlphanumeric:function(t){return H.test(t)}},K=h((function(t,r){r.NUMERIC={id:"Numeric",bit:1,ccBits:[10,12,14]},r.ALPHANUMERIC={id:"Alphanumeric",bit:2,ccBits:[9,11,13]},r.BYTE={id:"Byte",bit:4,ccBits:[8,16,16]},r.KANJI={id:"Kanji",bit:8,ccBits:[8,10,12]},r.MIXED={bit:-1},r.getCharCountIndicator=function(t,r){if(!t.ccBits)throw new Error("Invalid mode: "+t);if(!b(r))throw new Error("Invalid version: "+r);return r>=1&&r<10?t.ccBits[0]:r<27?t.ccBits[1]:t.ccBits[2]},r.getBestModeForData=function(t){return J.testNumeric(t)?r.NUMERIC:J.testAlphanumeric(t)?r.ALPHANUMERIC:J.testKanji(t)?r.KANJI:r.BYTE},r.toString=function(t){if(t&&t.id)return t.id;throw new Error("Invalid mode")},r.isValid=function(t){return t&&t.bit&&t.ccBits},r.from=function(t,e){if(r.isValid(t))return t;try{return function(t){if("string"!=typeof t)throw new Error("Param is not a string");switch(t.toLowerCase()){case"numeric":return r.NUMERIC;case"alphanumeric":return r.ALPHANUMERIC;case"kanji":return r.KANJI;case"byte":return r.BYTE;default:throw new Error("Unknown mode: "+t)}}(t)}catch(t){return e}}}));K.NUMERIC,K.ALPHANUMERIC,K.BYTE,K.KANJI,K.MIXED,K.getCharCountIndicator,K.getBestModeForData,K.isValid;var O=h((function(t,r){var e=i(7973);function n(t,r){return K.getCharCountIndicator(t,r)+4}function o(t,r){var e=0;return t.forEach((function(t){var o=n(t.mode,r);e+=o+t.getBitsLength()})),e}r.from=function(t,r){return b(t)?parseInt(t,10):r},r.getCapacity=function(t,r,e){if(!b(t))throw new Error("Invalid QR Code version");void 0===e&&(e=K.BYTE);var o=8*(a(t)-M(t,r));if(e===K.MIXED)return o;var i=o-n(e,t);switch(e){case K.NUMERIC:return Math.floor(i/10*3);case K.ALPHANUMERIC:return Math.floor(i/11*2);case K.KANJI:return Math.floor(i/13);case K.BYTE:default:return Math.floor(i/8)}},r.getBestVersionForData=function(t,e){var n,a=c.from(e,c.M);if(Array.isArray(t)){if(t.length>1)return function(t,e){for(var n=1;n<=40;n++){if(o(t,n)<=r.getCapacity(n,e,K.MIXED))return n}}(t,a);if(0===t.length)return 1;n=t[0]}else n=t;return function(t,e,n){for(var o=1;o<=40;o++)if(e<=r.getCapacity(o,n,t))return o}(n.mode,n.getLength(),a)},r.getEncodedBits=function(t){if(!b(t)||t<7)throw new Error("Invalid QR Code version");for(var r=t<<12;i(r)-e>=0;)r^=7973<<i(r)-e;return t<<12|r}}));O.getCapacity,O.getBestVersionForData,O.getEncodedBits;var Q=i(1335),V=function(t,r){for(var e=t.bit<<3|r,n=e<<10;i(n)-Q>=0;)n^=1335<<i(n)-Q;return 21522^(e<<10|n)};function q(t){this.mode=K.NUMERIC,this.data=t.toString()}q.getBitsLength=function(t){return 10*Math.floor(t/3)+(t%3?t%3*3+1:0)},q.prototype.getLength=function(){return this.data.length},q.prototype.getBitsLength=function(){return q.getBitsLength(this.data.length)},q.prototype.write=function(t){var r,e,n;for(r=0;r+3<=this.data.length;r+=3)e=this.data.substr(r,3),n=parseInt(e,10),t.put(n,10);var o=this.data.length-r;o>0&&(e=this.data.substr(r),n=parseInt(e,10),t.put(n,3*o+1))};var j=q,$=["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"," ","$","%","*","+","-",".","/",":"];function X(t){this.mode=K.ALPHANUMERIC,this.data=t}X.getBitsLength=function(t){return 11*Math.floor(t/2)+t%2*6},X.prototype.getLength=function(){return this.data.length},X.prototype.getBitsLength=function(){return X.getBitsLength(this.data.length)},X.prototype.write=function(t){var r;for(r=0;r+2<=this.data.length;r+=2){var e=45*$.indexOf(this.data[r]);e+=$.indexOf(this.data[r+1]),t.put(e,11)}this.data.length%2&&t.put($.indexOf(this.data[r]),6)};var Z=X;function W(t){this.mode=K.BYTE,"string"==typeof t&&(t=function(t){for(var r=[],e=t.length,n=0;n<e;n++){var o=t.charCodeAt(n);if(o>=55296&&o<=56319&&e>n+1){var a=t.charCodeAt(n+1);a>=56320&&a<=57343&&(o=1024*(o-55296)+a-56320+65536,n+=1)}o<128?r.push(o):o<2048?(r.push(o>>6|192),r.push(63&o|128)):o<55296||o>=57344&&o<65536?(r.push(o>>12|224),r.push(o>>6&63|128),r.push(63&o|128)):o>=65536&&o<=1114111?(r.push(o>>18|240),r.push(o>>12&63|128),r.push(o>>6&63|128),r.push(63&o|128)):r.push(239,191,189)}return new Uint8Array(r).buffer}(t)),this.data=new Uint8Array(t)}W.getBitsLength=function(t){return 8*t},W.prototype.getLength=function(){return this.data.length},W.prototype.getBitsLength=function(){return W.getBitsLength(this.data.length)},W.prototype.write=function(t){for(var r=0,e=this.data.length;r<e;r++)t.put(this.data[r],8)};var G=W;function tt(t){this.mode=K.KANJI,this.data=t}tt.getBitsLength=function(t){return 13*t},tt.prototype.getLength=function(){return this.data.length},tt.prototype.getBitsLength=function(){return tt.getBitsLength(this.data.length)},tt.prototype.write=function(t){var r;for(r=0;r<this.data.length;r++){var e=f(this.data[r]);if(e>=33088&&e<=40956)e-=33088;else{if(!(e>=57408&&e<=60351))throw new Error("Invalid SJIS character: "+this.data[r]+"\nMake sure your charset is UTF-8");e-=49472}e=192*(e>>>8&255)+(255&e),t.put(e,13)}};var rt=tt,et=h((function(t){var r={single_source_shortest_paths:function(t,e,n){var o={},a={};a[e]=0;var i,u,s,f,h,c,g,d=r.PriorityQueue.make();for(d.push(e,0);!d.empty();)for(s in u=(i=d.pop()).value,f=i.cost,h=t[u]||{})h.hasOwnProperty(s)&&(c=f+h[s],g=a[s],(void 0===a[s]||g>c)&&(a[s]=c,d.push(s,c),o[s]=u));if(void 0!==n&&void 0===a[n]){var l=["Could not find a path from ",e," to ",n,"."].join("");throw new Error(l)}return o},extract_shortest_path_from_predecessor_list:function(t,r){for(var e=[],n=r;n;)e.push(n),n=t[n];return e.reverse(),e},find_path:function(t,e,n){var o=r.single_source_shortest_paths(t,e,n);return r.extract_shortest_path_from_predecessor_list(o,n)},PriorityQueue:{make:function(t){var e,n=r.PriorityQueue,o={};for(e in t=t||{},n)n.hasOwnProperty(e)&&(o[e]=n[e]);return o.queue=[],o.sorter=t.sorter||n.default_sorter,o},default_sorter:function(t,r){return t.cost-r.cost},push:function(t,r){var e={value:t,cost:r};this.queue.push(e),this.queue.sort(this.sorter)},pop:function(){return this.queue.shift()},empty:function(){return 0===this.queue.length}}};t.exports=r})),nt=h((function(t,r){function e(t){return unescape(encodeURIComponent(t)).length}function n(t,r,e){for(var n,o=[];null!==(n=t.exec(e));)o.push({data:n[0],index:n.index,mode:r,length:n[0].length});return o}function o(t){var r,e,o=n(J.NUMERIC,K.NUMERIC,t),a=n(J.ALPHANUMERIC,K.ALPHANUMERIC,t);return s()?(r=n(J.BYTE,K.BYTE,t),e=n(J.KANJI,K.KANJI,t)):(r=n(J.BYTE_KANJI,K.BYTE,t),e=[]),o.concat(a,r,e).sort((function(t,r){return t.index-r.index})).map((function(t){return{data:t.data,mode:t.mode,length:t.length}}))}function a(t,r){switch(r){case K.NUMERIC:return j.getBitsLength(t);case K.ALPHANUMERIC:return Z.getBitsLength(t);case K.KANJI:return rt.getBitsLength(t);case K.BYTE:return G.getBitsLength(t)}}function i(t,r){var e,n=K.getBestModeForData(t);if((e=K.from(r,n))!==K.BYTE&&e.bit<n.bit)throw new Error('"'+t+'" cannot be encoded with mode '+K.toString(e)+".\n Suggested mode is: "+K.toString(n));switch(e!==K.KANJI||s()||(e=K.BYTE),e){case K.NUMERIC:return new j(t);case K.ALPHANUMERIC:return new Z(t);case K.KANJI:return new rt(t);case K.BYTE:return new G(t)}}r.fromArray=function(t){return t.reduce((function(t,r){return"string"==typeof r?t.push(i(r,null)):r.data&&t.push(i(r.data,r.mode)),t}),[])},r.fromString=function(t,n){for(var i=function(t,r){for(var e={},n={start:{}},o=["start"],i=0;i<t.length;i++){for(var u=t[i],s=[],f=0;f<u.length;f++){var h=u[f],c=""+i+f;s.push(c),e[c]={node:h,lastCount:0},n[c]={};for(var g=0;g<o.length;g++){var d=o[g];e[d]&&e[d].node.mode===h.mode?(n[d][c]=a(e[d].lastCount+h.length,h.mode)-a(e[d].lastCount,h.mode),e[d].lastCount+=h.length):(e[d]&&(e[d].lastCount=h.length),n[d][c]=a(h.length,h.mode)+4+K.getCharCountIndicator(h.mode,r))}}o=s}for(var l=0;l<o.length;l++)n[o[l]].end=0;return{map:n,table:e}}(function(t){for(var r=[],n=0;n<t.length;n++){var o=t[n];switch(o.mode){case K.NUMERIC:r.push([o,{data:o.data,mode:K.ALPHANUMERIC,length:o.length},{data:o.data,mode:K.BYTE,length:o.length}]);break;case K.ALPHANUMERIC:r.push([o,{data:o.data,mode:K.BYTE,length:o.length}]);break;case K.KANJI:r.push([o,{data:o.data,mode:K.BYTE,length:e(o.data)}]);break;case K.BYTE:r.push([{data:o.data,mode:K.BYTE,length:e(o.data)}])}}return r}(o(t)),n),u=et.find_path(i.map,"start","end"),s=[],f=1;f<u.length-1;f++)s.push(i.table[u[f]].node);return r.fromArray(function(t){return t.reduce((function(t,r){var e=t.length-1>=0?t[t.length-1]:null;return e&&e.mode===r.mode?(t[t.length-1].data+=r.data,t):(t.push(r),t)}),[])}(s))},r.rawSplit=function(t){return r.fromArray(o(t))}}));function ot(t,r,e){var n,o,a=t.size,i=V(r,e);for(n=0;n<15;n++)o=1==(i>>n&1),n<6?t.set(n,8,o,!0):n<8?t.set(n+1,8,o,!0):t.set(a-15+n,8,o,!0),n<8?t.set(8,a-n-1,o,!0):n<9?t.set(8,15-n-1+1,o,!0):t.set(8,15-n-1,o,!0);t.set(a-8,8,1,!0)}function at(t,r,e){var n=new d;e.forEach((function(r){n.put(r.mode.bit,4),n.put(r.getLength(),K.getCharCountIndicator(r.mode,t)),r.write(n)}));var o=8*(a(t)-M(t,r));for(n.getLengthInBits()+4<=o&&n.put(0,4);n.getLengthInBits()%8!=0;)n.putBit(0);for(var i=(o-n.getLengthInBits())/8,u=0;u<i;u++)n.put(u%2?17:236,8);return function(t,r,e){for(var n=a(r),o=M(r,e),i=n-o,u=I(r,e),s=u-n%u,f=Math.floor(n/u),h=Math.floor(i/u),c=h+1,g=f-h,d=new L(g),l=0,v=new Array(u),p=new Array(u),w=0,m=new Uint8Array(t.buffer),E=0;E<u;E++){var y=E<s?h:c;v[E]=m.slice(l,l+y),p[E]=d.encode(v[E]),l+=y,w=Math.max(w,y)}var A,N,B=new Uint8Array(n),C=0;for(A=0;A<w;A++)for(N=0;N<u;N++)A<v[N].length&&(B[C++]=v[N][A]);for(A=0;A<g;A++)for(N=0;N<u;N++)B[C++]=p[N][A];return B}(n,t,r)}function it(t,r,e,n){var a;if(Array.isArray(t))a=nt.fromArray(t);else{if("string"!=typeof t)throw new Error("Invalid data");var i=r;if(!i){var u=nt.rawSplit(t);i=O.getBestVersionForData(u,e)}a=nt.fromString(t,i||40)}var s=O.getBestVersionForData(a,e);if(!s)throw new Error("The amount of data is too big to be stored in a QR Code");if(r){if(r<s)throw new Error("\nThe chosen QR Code version cannot contain this amount of data.\nMinimum version required to store current data is: "+s+".\n")}else r=s;var f=at(r,e,a),h=o(r),c=new v(h);return function(t,r){for(var e=t.size,n=m(r),o=0;o<n.length;o++)for(var a=n[o][0],i=n[o][1],u=-1;u<=7;u++)if(!(a+u<=-1||e<=a+u))for(var s=-1;s<=7;s++)i+s<=-1||e<=i+s||(u>=0&&u<=6&&(0===s||6===s)||s>=0&&s<=6&&(0===u||6===u)||u>=2&&u<=4&&s>=2&&s<=4?t.set(a+u,i+s,!0,!0):t.set(a+u,i+s,!1,!0))}(c,r),function(t){for(var r=t.size,e=8;e<r-8;e++){var n=e%2==0;t.set(e,6,n,!0),t.set(6,e,n,!0)}}(c),function(t,r){for(var e=p.getPositions(r),n=0;n<e.length;n++)for(var o=e[n][0],a=e[n][1],i=-2;i<=2;i++)for(var u=-2;u<=2;u++)-2===i||2===i||-2===u||2===u||0===i&&0===u?t.set(o+i,a+u,!0,!0):t.set(o+i,a+u,!1,!0)}(c,r),ot(c,e,0),r>=7&&function(t,r){for(var e,n,o,a=t.size,i=O.getEncodedBits(r),u=0;u<18;u++)e=Math.floor(u/3),n=u%3+a-8-3,o=1==(i>>u&1),t.set(e,n,o,!0),t.set(n,e,o,!0)}(c,r),function(t,r){for(var e=t.size,n=-1,o=e-1,a=7,i=0,u=e-1;u>0;u-=2)for(6===u&&u--;;){for(var s=0;s<2;s++)if(!t.isReserved(o,u-s)){var f=!1;i<r.length&&(f=1==(r[i]>>>a&1)),t.set(o,u-s,f),-1===--a&&(i++,a=7)}if((o+=n)<0||e<=o){o-=n,n=-n;break}}}(c,f),isNaN(n)&&(n=E.getBestMask(c,ot.bind(null,c,e))),E.applyMask(n,c),ot(c,e,n),{modules:c,version:r,errorCorrectionLevel:e,maskPattern:n,segments:a}}nt.fromArray,nt.fromString,nt.rawSplit;var ut=function(t,r){if(void 0===t||""===t)throw new Error("No input text");var e,n,o=c.M;return void 0!==r&&(o=c.from(r.errorCorrectionLevel,c.M),e=O.from(r.version),n=E.from(r.maskPattern),r.toSJISFunc&&u(r.toSJISFunc)),it(t,e,o,n)},st=h((function(t,r){function e(t){if("number"==typeof t&&(t=t.toString()),"string"!=typeof t)throw new Error("Color should be defined as hex string");var r=t.slice().replace("#","").split("");if(r.length<3||5===r.length||r.length>8)throw new Error("Invalid hex color: "+t);3!==r.length&&4!==r.length||(r=Array.prototype.concat.apply([],r.map((function(t){return[t,t]})))),6===r.length&&r.push("F","F");var e=parseInt(r.join(""),16);return{r:e>>24&255,g:e>>16&255,b:e>>8&255,a:255&e,hex:"#"+r.slice(0,6).join("")}}r.getOptions=function(t){t||(t={}),t.color||(t.color={});var r=void 0===t.margin||null===t.margin||t.margin<0?4:t.margin,n=t.width&&t.width>=21?t.width:void 0,o=t.scale||4;return{width:n,scale:n?4:o,margin:r,color:{dark:e(t.color.dark||"#000000ff"),light:e(t.color.light||"#ffffffff")},type:t.type,rendererOpts:t.rendererOpts||{}}},r.getScale=function(t,r){return r.width&&r.width>=t+2*r.margin?r.width/(t+2*r.margin):r.scale},r.getImageWidth=function(t,e){var n=r.getScale(t,e);return Math.floor((t+2*e.margin)*n)},r.qrToImageData=function(t,e,n){for(var o=e.modules.size,a=e.modules.data,i=r.getScale(o,n),u=Math.floor((o+2*n.margin)*i),s=n.margin*i,f=[n.color.light,n.color.dark],h=0;h<u;h++)for(var c=0;c<u;c++){var g=4*(h*u+c),d=n.color.light;if(h>=s&&c>=s&&h<u-s&&c<u-s)d=f[a[Math.floor((h-s)/i)*o+Math.floor((c-s)/i)]?1:0];t[g++]=d.r,t[g++]=d.g,t[g++]=d.b,t[g]=d.a}}}));st.getOptions,st.getScale,st.getImageWidth,st.qrToImageData;var ft=h((function(t,r){r.render=function(t,r,e){var n=e,o=r;void 0!==n||r&&r.getContext||(n=r,r=void 0),r||(o=function(){try{return document.createElement("canvas")}catch(t){throw new Error("You need to specify a canvas element")}}()),n=st.getOptions(n);var a=st.getImageWidth(t.modules.size,n),i=o.getContext("2d"),u=i.createImageData(a,a);return st.qrToImageData(u.data,t,n),function(t,r,e){t.clearRect(0,0,r.width,r.height),r.style||(r.style={}),r.height=e,r.width=e,r.style.height=e+"px",r.style.width=e+"px"}(i,o,a),i.putImageData(u,0,0),o},r.renderToDataURL=function(t,e,n){var o=n;void 0!==o||e&&e.getContext||(o=e,e=void 0),o||(o={});var a=r.render(t,e,o),i=o.type||"image/png",u=o.rendererOpts||{};return a.toDataURL(i,u.quality)}}));function ht(t,r){var e=t.a/255,n=r+'="'+t.hex+'"';return e<1?n+" "+r+'-opacity="'+e.toFixed(2).slice(1)+'"':n}function ct(t,r,e){var n=t+r;return void 0!==e&&(n+=" "+e),n}ft.render,ft.renderToDataURL;var gt=function(t,r,e){var n=st.getOptions(r),o=t.modules.size,a=t.modules.data,i=o+2*n.margin,u=n.color.light.a?"<path "+ht(n.color.light,"fill")+' d="M0 0h'+i+"v"+i+'H0z"/>':"",s="<path "+ht(n.color.dark,"stroke")+' d="'+function(t,r,e){for(var n="",o=0,a=!1,i=0,u=0;u<t.length;u++){var s=Math.floor(u%r),f=Math.floor(u/r);s||a||(a=!0),t[u]?(i++,u>0&&s>0&&t[u-1]||(n+=a?ct("M",s+e,.5+f+e):ct("m",o,0),o=0,a=!1),s+1<r&&t[u+1]||(n+=ct("h",i),i=0)):o++}return n}(a,o,n.margin)+'"/>',f='viewBox="0 0 '+i+" "+i+'"',h='<svg xmlns="http://www.w3.org/2000/svg" '+(n.width?'width="'+n.width+'" height="'+n.width+'" ':"")+f+' shape-rendering="crispEdges">'+u+s+"</svg>\n";return"function"==typeof e&&e(null,h),h};function dt(t,r,n,o,a){var i=[].slice.call(arguments,1),u=i.length,s="function"==typeof i[u-1];if(!s&&!e())throw new Error("Callback required as last argument");if(!s){if(u<1)throw new Error("Too few arguments provided");return 1===u?(n=r,r=o=void 0):2!==u||r.getContext||(o=n,n=r,r=void 0),new Promise((function(e,a){try{var i=ut(n,o);e(t(i,r,o))}catch(t){a(t)}}))}if(u<2)throw new Error("Too few arguments provided");2===u?(a=n,n=r,r=o=void 0):3===u&&(r.getContext&&void 0===a?(a=o,o=void 0):(a=o,o=n,n=r,r=void 0));try{var f=ut(n,o);a(null,t(f,r,o))}catch(t){a(t)}}var lt=ut,vt=dt.bind(null,ft.render),pt=dt.bind(null,ft.renderToDataURL),wt=dt.bind(null,(function(t,r,e){return gt(t,e)})),mt={create:lt,toCanvas:vt,toDataURL:pt,toString:wt};return t.create=lt,t.default=mt,t.toCanvas=vt,t.toDataURL=pt,t.toString=wt,Object.defineProperty(t,"__esModule",{value:!0}),t}({});
+</script>
+  <!-- pako 2.1.0 — vendored verbatim; SHA-256 ede2693a4a6a5126b9d35669062b358ecab6ae7b9b86a1cf302feb45a8514907; source https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js; see PROVENANCE.md -->
   <script>/*! pako 2.1.0 https://github.com/nodeca/pako @license (MIT AND Zlib) */
 !function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"function"==typeof define&&define.amd?define(["exports"],e):e((t="undefined"!=typeof globalThis?globalThis:t||self).pako={})}(this,(function(t){"use strict";function e(t){let e=t.length;for(;--e>=0;)t[e]=0}const a=256,i=286,n=30,s=15,r=new Uint8Array([0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0]),o=new Uint8Array([0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13]),l=new Uint8Array([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,3,7]),h=new Uint8Array([16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15]),d=new Array(576);e(d);const _=new Array(60);e(_);const f=new Array(512);e(f);const c=new Array(256);e(c);const u=new Array(29);e(u);const w=new Array(n);function m(t,e,a,i,n){this.static_tree=t,this.extra_bits=e,this.extra_base=a,this.elems=i,this.max_length=n,this.has_stree=t&&t.length}let b,g,p;function k(t,e){this.dyn_tree=t,this.max_code=0,this.stat_desc=e}e(w);const v=t=>t<256?f[t]:f[256+(t>>>7)],y=(t,e)=>{t.pending_buf[t.pending++]=255&e,t.pending_buf[t.pending++]=e>>>8&255},x=(t,e,a)=>{t.bi_valid>16-a?(t.bi_buf|=e<<t.bi_valid&65535,y(t,t.bi_buf),t.bi_buf=e>>16-t.bi_valid,t.bi_valid+=a-16):(t.bi_buf|=e<<t.bi_valid&65535,t.bi_valid+=a)},z=(t,e,a)=>{x(t,a[2*e],a[2*e+1])},A=(t,e)=>{let a=0;do{a|=1&t,t>>>=1,a<<=1}while(--e>0);return a>>>1},E=(t,e,a)=>{const i=new Array(16);let n,r,o=0;for(n=1;n<=s;n++)o=o+a[n-1]<<1,i[n]=o;for(r=0;r<=e;r++){let e=t[2*r+1];0!==e&&(t[2*r]=A(i[e]++,e))}},R=t=>{let e;for(e=0;e<i;e++)t.dyn_ltree[2*e]=0;for(e=0;e<n;e++)t.dyn_dtree[2*e]=0;for(e=0;e<19;e++)t.bl_tree[2*e]=0;t.dyn_ltree[512]=1,t.opt_len=t.static_len=0,t.sym_next=t.matches=0},Z=t=>{t.bi_valid>8?y(t,t.bi_buf):t.bi_valid>0&&(t.pending_buf[t.pending++]=t.bi_buf),t.bi_buf=0,t.bi_valid=0},U=(t,e,a,i)=>{const n=2*e,s=2*a;return t[n]<t[s]||t[n]===t[s]&&i[e]<=i[a]},S=(t,e,a)=>{const i=t.heap[a];let n=a<<1;for(;n<=t.heap_len&&(n<t.heap_len&&U(e,t.heap[n+1],t.heap[n],t.depth)&&n++,!U(e,i,t.heap[n],t.depth));)t.heap[a]=t.heap[n],a=n,n<<=1;t.heap[a]=i},D=(t,e,i)=>{let n,s,l,h,d=0;if(0!==t.sym_next)do{n=255&t.pending_buf[t.sym_buf+d++],n+=(255&t.pending_buf[t.sym_buf+d++])<<8,s=t.pending_buf[t.sym_buf+d++],0===n?z(t,s,e):(l=c[s],z(t,l+a+1,e),h=r[l],0!==h&&(s-=u[l],x(t,s,h)),n--,l=v(n),z(t,l,i),h=o[l],0!==h&&(n-=w[l],x(t,n,h)))}while(d<t.sym_next);z(t,256,e)},T=(t,e)=>{const a=e.dyn_tree,i=e.stat_desc.static_tree,n=e.stat_desc.has_stree,r=e.stat_desc.elems;let o,l,h,d=-1;for(t.heap_len=0,t.heap_max=573,o=0;o<r;o++)0!==a[2*o]?(t.heap[++t.heap_len]=d=o,t.depth[o]=0):a[2*o+1]=0;for(;t.heap_len<2;)h=t.heap[++t.heap_len]=d<2?++d:0,a[2*h]=1,t.depth[h]=0,t.opt_len--,n&&(t.static_len-=i[2*h+1]);for(e.max_code=d,o=t.heap_len>>1;o>=1;o--)S(t,a,o);h=r;do{o=t.heap[1],t.heap[1]=t.heap[t.heap_len--],S(t,a,1),l=t.heap[1],t.heap[--t.heap_max]=o,t.heap[--t.heap_max]=l,a[2*h]=a[2*o]+a[2*l],t.depth[h]=(t.depth[o]>=t.depth[l]?t.depth[o]:t.depth[l])+1,a[2*o+1]=a[2*l+1]=h,t.heap[1]=h++,S(t,a,1)}while(t.heap_len>=2);t.heap[--t.heap_max]=t.heap[1],((t,e)=>{const a=e.dyn_tree,i=e.max_code,n=e.stat_desc.static_tree,r=e.stat_desc.has_stree,o=e.stat_desc.extra_bits,l=e.stat_desc.extra_base,h=e.stat_desc.max_length;let d,_,f,c,u,w,m=0;for(c=0;c<=s;c++)t.bl_count[c]=0;for(a[2*t.heap[t.heap_max]+1]=0,d=t.heap_max+1;d<573;d++)_=t.heap[d],c=a[2*a[2*_+1]+1]+1,c>h&&(c=h,m++),a[2*_+1]=c,_>i||(t.bl_count[c]++,u=0,_>=l&&(u=o[_-l]),w=a[2*_],t.opt_len+=w*(c+u),r&&(t.static_len+=w*(n[2*_+1]+u)));if(0!==m){do{for(c=h-1;0===t.bl_count[c];)c--;t.bl_count[c]--,t.bl_count[c+1]+=2,t.bl_count[h]--,m-=2}while(m>0);for(c=h;0!==c;c--)for(_=t.bl_count[c];0!==_;)f=t.heap[--d],f>i||(a[2*f+1]!==c&&(t.opt_len+=(c-a[2*f+1])*a[2*f],a[2*f+1]=c),_--)}})(t,e),E(a,d,t.bl_count)},O=(t,e,a)=>{let i,n,s=-1,r=e[1],o=0,l=7,h=4;for(0===r&&(l=138,h=3),e[2*(a+1)+1]=65535,i=0;i<=a;i++)n=r,r=e[2*(i+1)+1],++o<l&&n===r||(o<h?t.bl_tree[2*n]+=o:0!==n?(n!==s&&t.bl_tree[2*n]++,t.bl_tree[32]++):o<=10?t.bl_tree[34]++:t.bl_tree[36]++,o=0,s=n,0===r?(l=138,h=3):n===r?(l=6,h=3):(l=7,h=4))},I=(t,e,a)=>{let i,n,s=-1,r=e[1],o=0,l=7,h=4;for(0===r&&(l=138,h=3),i=0;i<=a;i++)if(n=r,r=e[2*(i+1)+1],!(++o<l&&n===r)){if(o<h)do{z(t,n,t.bl_tree)}while(0!=--o);else 0!==n?(n!==s&&(z(t,n,t.bl_tree),o--),z(t,16,t.bl_tree),x(t,o-3,2)):o<=10?(z(t,17,t.bl_tree),x(t,o-3,3)):(z(t,18,t.bl_tree),x(t,o-11,7));o=0,s=n,0===r?(l=138,h=3):n===r?(l=6,h=3):(l=7,h=4)}};let F=!1;const L=(t,e,a,i)=>{x(t,0+(i?1:0),3),Z(t),y(t,a),y(t,~a),a&&t.pending_buf.set(t.window.subarray(e,e+a),t.pending),t.pending+=a};var N=(t,e,i,n)=>{let s,r,o=0;t.level>0?(2===t.strm.data_type&&(t.strm.data_type=(t=>{let e,i=4093624447;for(e=0;e<=31;e++,i>>>=1)if(1&i&&0!==t.dyn_ltree[2*e])return 0;if(0!==t.dyn_ltree[18]||0!==t.dyn_ltree[20]||0!==t.dyn_ltree[26])return 1;for(e=32;e<a;e++)if(0!==t.dyn_ltree[2*e])return 1;return 0})(t)),T(t,t.l_desc),T(t,t.d_desc),o=(t=>{let e;for(O(t,t.dyn_ltree,t.l_desc.max_code),O(t,t.dyn_dtree,t.d_desc.max_code),T(t,t.bl_desc),e=18;e>=3&&0===t.bl_tree[2*h[e]+1];e--);return t.opt_len+=3*(e+1)+5+5+4,e})(t),s=t.opt_len+3+7>>>3,r=t.static_len+3+7>>>3,r<=s&&(s=r)):s=r=i+5,i+4<=s&&-1!==e?L(t,e,i,n):4===t.strategy||r===s?(x(t,2+(n?1:0),3),D(t,d,_)):(x(t,4+(n?1:0),3),((t,e,a,i)=>{let n;for(x(t,e-257,5),x(t,a-1,5),x(t,i-4,4),n=0;n<i;n++)x(t,t.bl_tree[2*h[n]+1],3);I(t,t.dyn_ltree,e-1),I(t,t.dyn_dtree,a-1)})(t,t.l_desc.max_code+1,t.d_desc.max_code+1,o+1),D(t,t.dyn_ltree,t.dyn_dtree)),R(t),n&&Z(t)},B={_tr_init:t=>{F||((()=>{let t,e,a,h,k;const v=new Array(16);for(a=0,h=0;h<28;h++)for(u[h]=a,t=0;t<1<<r[h];t++)c[a++]=h;for(c[a-1]=h,k=0,h=0;h<16;h++)for(w[h]=k,t=0;t<1<<o[h];t++)f[k++]=h;for(k>>=7;h<n;h++)for(w[h]=k<<7,t=0;t<1<<o[h]-7;t++)f[256+k++]=h;for(e=0;e<=s;e++)v[e]=0;for(t=0;t<=143;)d[2*t+1]=8,t++,v[8]++;for(;t<=255;)d[2*t+1]=9,t++,v[9]++;for(;t<=279;)d[2*t+1]=7,t++,v[7]++;for(;t<=287;)d[2*t+1]=8,t++,v[8]++;for(E(d,287,v),t=0;t<n;t++)_[2*t+1]=5,_[2*t]=A(t,5);b=new m(d,r,257,i,s),g=new m(_,o,0,n,s),p=new m(new Array(0),l,0,19,7)})(),F=!0),t.l_desc=new k(t.dyn_ltree,b),t.d_desc=new k(t.dyn_dtree,g),t.bl_desc=new k(t.bl_tree,p),t.bi_buf=0,t.bi_valid=0,R(t)},_tr_stored_block:L,_tr_flush_block:N,_tr_tally:(t,e,i)=>(t.pending_buf[t.sym_buf+t.sym_next++]=e,t.pending_buf[t.sym_buf+t.sym_next++]=e>>8,t.pending_buf[t.sym_buf+t.sym_next++]=i,0===e?t.dyn_ltree[2*i]++:(t.matches++,e--,t.dyn_ltree[2*(c[i]+a+1)]++,t.dyn_dtree[2*v(e)]++),t.sym_next===t.sym_end),_tr_align:t=>{x(t,2,3),z(t,256,d),(t=>{16===t.bi_valid?(y(t,t.bi_buf),t.bi_buf=0,t.bi_valid=0):t.bi_valid>=8&&(t.pending_buf[t.pending++]=255&t.bi_buf,t.bi_buf>>=8,t.bi_valid-=8)})(t)}};var C=(t,e,a,i)=>{let n=65535&t|0,s=t>>>16&65535|0,r=0;for(;0!==a;){r=a>2e3?2e3:a,a-=r;do{n=n+e[i++]|0,s=s+n|0}while(--r);n%=65521,s%=65521}return n|s<<16|0};const M=new Uint32Array((()=>{let t,e=[];for(var a=0;a<256;a++){t=a;for(var i=0;i<8;i++)t=1&t?3988292384^t>>>1:t>>>1;e[a]=t}return e})());var H=(t,e,a,i)=>{const n=M,s=i+a;t^=-1;for(let a=i;a<s;a++)t=t>>>8^n[255&(t^e[a])];return-1^t},j={2:"need dictionary",1:"stream end",0:"","-1":"file error","-2":"stream error","-3":"data error","-4":"insufficient memory","-5":"buffer error","-6":"incompatible version"},K={Z_NO_FLUSH:0,Z_PARTIAL_FLUSH:1,Z_SYNC_FLUSH:2,Z_FULL_FLUSH:3,Z_FINISH:4,Z_BLOCK:5,Z_TREES:6,Z_OK:0,Z_STREAM_END:1,Z_NEED_DICT:2,Z_ERRNO:-1,Z_STREAM_ERROR:-2,Z_DATA_ERROR:-3,Z_MEM_ERROR:-4,Z_BUF_ERROR:-5,Z_NO_COMPRESSION:0,Z_BEST_SPEED:1,Z_BEST_COMPRESSION:9,Z_DEFAULT_COMPRESSION:-1,Z_FILTERED:1,Z_HUFFMAN_ONLY:2,Z_RLE:3,Z_FIXED:4,Z_DEFAULT_STRATEGY:0,Z_BINARY:0,Z_TEXT:1,Z_UNKNOWN:2,Z_DEFLATED:8};const{_tr_init:P,_tr_stored_block:Y,_tr_flush_block:G,_tr_tally:X,_tr_align:W}=B,{Z_NO_FLUSH:q,Z_PARTIAL_FLUSH:J,Z_FULL_FLUSH:Q,Z_FINISH:V,Z_BLOCK:$,Z_OK:tt,Z_STREAM_END:et,Z_STREAM_ERROR:at,Z_DATA_ERROR:it,Z_BUF_ERROR:nt,Z_DEFAULT_COMPRESSION:st,Z_FILTERED:rt,Z_HUFFMAN_ONLY:ot,Z_RLE:lt,Z_FIXED:ht,Z_DEFAULT_STRATEGY:dt,Z_UNKNOWN:_t,Z_DEFLATED:ft}=K,ct=258,ut=262,wt=42,mt=113,bt=666,gt=(t,e)=>(t.msg=j[e],e),pt=t=>2*t-(t>4?9:0),kt=t=>{let e=t.length;for(;--e>=0;)t[e]=0},vt=t=>{let e,a,i,n=t.w_size;e=t.hash_size,i=e;do{a=t.head[--i],t.head[i]=a>=n?a-n:0}while(--e);e=n,i=e;do{a=t.prev[--i],t.prev[i]=a>=n?a-n:0}while(--e)};let yt=(t,e,a)=>(e<<t.hash_shift^a)&t.hash_mask;const xt=t=>{const e=t.state;let a=e.pending;a>t.avail_out&&(a=t.avail_out),0!==a&&(t.output.set(e.pending_buf.subarray(e.pending_out,e.pending_out+a),t.next_out),t.next_out+=a,e.pending_out+=a,t.total_out+=a,t.avail_out-=a,e.pending-=a,0===e.pending&&(e.pending_out=0))},zt=(t,e)=>{G(t,t.block_start>=0?t.block_start:-1,t.strstart-t.block_start,e),t.block_start=t.strstart,xt(t.strm)},At=(t,e)=>{t.pending_buf[t.pending++]=e},Et=(t,e)=>{t.pending_buf[t.pending++]=e>>>8&255,t.pending_buf[t.pending++]=255&e},Rt=(t,e,a,i)=>{let n=t.avail_in;return n>i&&(n=i),0===n?0:(t.avail_in-=n,e.set(t.input.subarray(t.next_in,t.next_in+n),a),1===t.state.wrap?t.adler=C(t.adler,e,n,a):2===t.state.wrap&&(t.adler=H(t.adler,e,n,a)),t.next_in+=n,t.total_in+=n,n)},Zt=(t,e)=>{let a,i,n=t.max_chain_length,s=t.strstart,r=t.prev_length,o=t.nice_match;const l=t.strstart>t.w_size-ut?t.strstart-(t.w_size-ut):0,h=t.window,d=t.w_mask,_=t.prev,f=t.strstart+ct;let c=h[s+r-1],u=h[s+r];t.prev_length>=t.good_match&&(n>>=2),o>t.lookahead&&(o=t.lookahead);do{if(a=e,h[a+r]===u&&h[a+r-1]===c&&h[a]===h[s]&&h[++a]===h[s+1]){s+=2,a++;do{}while(h[++s]===h[++a]&&h[++s]===h[++a]&&h[++s]===h[++a]&&h[++s]===h[++a]&&h[++s]===h[++a]&&h[++s]===h[++a]&&h[++s]===h[++a]&&h[++s]===h[++a]&&s<f);if(i=ct-(f-s),s=f-ct,i>r){if(t.match_start=e,r=i,i>=o)break;c=h[s+r-1],u=h[s+r]}}}while((e=_[e&d])>l&&0!=--n);return r<=t.lookahead?r:t.lookahead},Ut=t=>{const e=t.w_size;let a,i,n;do{if(i=t.window_size-t.lookahead-t.strstart,t.strstart>=e+(e-ut)&&(t.window.set(t.window.subarray(e,e+e-i),0),t.match_start-=e,t.strstart-=e,t.block_start-=e,t.insert>t.strstart&&(t.insert=t.strstart),vt(t),i+=e),0===t.strm.avail_in)break;if(a=Rt(t.strm,t.window,t.strstart+t.lookahead,i),t.lookahead+=a,t.lookahead+t.insert>=3)for(n=t.strstart-t.insert,t.ins_h=t.window[n],t.ins_h=yt(t,t.ins_h,t.window[n+1]);t.insert&&(t.ins_h=yt(t,t.ins_h,t.window[n+3-1]),t.prev[n&t.w_mask]=t.head[t.ins_h],t.head[t.ins_h]=n,n++,t.insert--,!(t.lookahead+t.insert<3)););}while(t.lookahead<ut&&0!==t.strm.avail_in)},St=(t,e)=>{let a,i,n,s=t.pending_buf_size-5>t.w_size?t.w_size:t.pending_buf_size-5,r=0,o=t.strm.avail_in;do{if(a=65535,n=t.bi_valid+42>>3,t.strm.avail_out<n)break;if(n=t.strm.avail_out-n,i=t.strstart-t.block_start,a>i+t.strm.avail_in&&(a=i+t.strm.avail_in),a>n&&(a=n),a<s&&(0===a&&e!==V||e===q||a!==i+t.strm.avail_in))break;r=e===V&&a===i+t.strm.avail_in?1:0,Y(t,0,0,r),t.pending_buf[t.pending-4]=a,t.pending_buf[t.pending-3]=a>>8,t.pending_buf[t.pending-2]=~a,t.pending_buf[t.pending-1]=~a>>8,xt(t.strm),i&&(i>a&&(i=a),t.strm.output.set(t.window.subarray(t.block_start,t.block_start+i),t.strm.next_out),t.strm.next_out+=i,t.strm.avail_out-=i,t.strm.total_out+=i,t.block_start+=i,a-=i),a&&(Rt(t.strm,t.strm.output,t.strm.next_out,a),t.strm.next_out+=a,t.strm.avail_out-=a,t.strm.total_out+=a)}while(0===r);return o-=t.strm.avail_in,o&&(o>=t.w_size?(t.matches=2,t.window.set(t.strm.input.subarray(t.strm.next_in-t.w_size,t.strm.next_in),0),t.strstart=t.w_size,t.insert=t.strstart):(t.window_size-t.strstart<=o&&(t.strstart-=t.w_size,t.window.set(t.window.subarray(t.w_size,t.w_size+t.strstart),0),t.matches<2&&t.matches++,t.insert>t.strstart&&(t.insert=t.strstart)),t.window.set(t.strm.input.subarray(t.strm.next_in-o,t.strm.next_in),t.strstart),t.strstart+=o,t.insert+=o>t.w_size-t.insert?t.w_size-t.insert:o),t.block_start=t.strstart),t.high_water<t.strstart&&(t.high_water=t.strstart),r?4:e!==q&&e!==V&&0===t.strm.avail_in&&t.strstart===t.block_start?2:(n=t.window_size-t.strstart,t.strm.avail_in>n&&t.block_start>=t.w_size&&(t.block_start-=t.w_size,t.strstart-=t.w_size,t.window.set(t.window.subarray(t.w_size,t.w_size+t.strstart),0),t.matches<2&&t.matches++,n+=t.w_size,t.insert>t.strstart&&(t.insert=t.strstart)),n>t.strm.avail_in&&(n=t.strm.avail_in),n&&(Rt(t.strm,t.window,t.strstart,n),t.strstart+=n,t.insert+=n>t.w_size-t.insert?t.w_size-t.insert:n),t.high_water<t.strstart&&(t.high_water=t.strstart),n=t.bi_valid+42>>3,n=t.pending_buf_size-n>65535?65535:t.pending_buf_size-n,s=n>t.w_size?t.w_size:n,i=t.strstart-t.block_start,(i>=s||(i||e===V)&&e!==q&&0===t.strm.avail_in&&i<=n)&&(a=i>n?n:i,r=e===V&&0===t.strm.avail_in&&a===i?1:0,Y(t,t.block_start,a,r),t.block_start+=a,xt(t.strm)),r?3:1)},Dt=(t,e)=>{let a,i;for(;;){if(t.lookahead<ut){if(Ut(t),t.lookahead<ut&&e===q)return 1;if(0===t.lookahead)break}if(a=0,t.lookahead>=3&&(t.ins_h=yt(t,t.ins_h,t.window[t.strstart+3-1]),a=t.prev[t.strstart&t.w_mask]=t.head[t.ins_h],t.head[t.ins_h]=t.strstart),0!==a&&t.strstart-a<=t.w_size-ut&&(t.match_length=Zt(t,a)),t.match_length>=3)if(i=X(t,t.strstart-t.match_start,t.match_length-3),t.lookahead-=t.match_length,t.match_length<=t.max_lazy_match&&t.lookahead>=3){t.match_length--;do{t.strstart++,t.ins_h=yt(t,t.ins_h,t.window[t.strstart+3-1]),a=t.prev[t.strstart&t.w_mask]=t.head[t.ins_h],t.head[t.ins_h]=t.strstart}while(0!=--t.match_length);t.strstart++}else t.strstart+=t.match_length,t.match_length=0,t.ins_h=t.window[t.strstart],t.ins_h=yt(t,t.ins_h,t.window[t.strstart+1]);else i=X(t,0,t.window[t.strstart]),t.lookahead--,t.strstart++;if(i&&(zt(t,!1),0===t.strm.avail_out))return 1}return t.insert=t.strstart<2?t.strstart:2,e===V?(zt(t,!0),0===t.strm.avail_out?3:4):t.sym_next&&(zt(t,!1),0===t.strm.avail_out)?1:2},Tt=(t,e)=>{let a,i,n;for(;;){if(t.lookahead<ut){if(Ut(t),t.lookahead<ut&&e===q)return 1;if(0===t.lookahead)break}if(a=0,t.lookahead>=3&&(t.ins_h=yt(t,t.ins_h,t.window[t.strstart+3-1]),a=t.prev[t.strstart&t.w_mask]=t.head[t.ins_h],t.head[t.ins_h]=t.strstart),t.prev_length=t.match_length,t.prev_match=t.match_start,t.match_length=2,0!==a&&t.prev_length<t.max_lazy_match&&t.strstart-a<=t.w_size-ut&&(t.match_length=Zt(t,a),t.match_length<=5&&(t.strategy===rt||3===t.match_length&&t.strstart-t.match_start>4096)&&(t.match_length=2)),t.prev_length>=3&&t.match_length<=t.prev_length){n=t.strstart+t.lookahead-3,i=X(t,t.strstart-1-t.prev_match,t.prev_length-3),t.lookahead-=t.prev_length-1,t.prev_length-=2;do{++t.strstart<=n&&(t.ins_h=yt(t,t.ins_h,t.window[t.strstart+3-1]),a=t.prev[t.strstart&t.w_mask]=t.head[t.ins_h],t.head[t.ins_h]=t.strstart)}while(0!=--t.prev_length);if(t.match_available=0,t.match_length=2,t.strstart++,i&&(zt(t,!1),0===t.strm.avail_out))return 1}else if(t.match_available){if(i=X(t,0,t.window[t.strstart-1]),i&&zt(t,!1),t.strstart++,t.lookahead--,0===t.strm.avail_out)return 1}else t.match_available=1,t.strstart++,t.lookahead--}return t.match_available&&(i=X(t,0,t.window[t.strstart-1]),t.match_available=0),t.insert=t.strstart<2?t.strstart:2,e===V?(zt(t,!0),0===t.strm.avail_out?3:4):t.sym_next&&(zt(t,!1),0===t.strm.avail_out)?1:2};function Ot(t,e,a,i,n){this.good_length=t,this.max_lazy=e,this.nice_length=a,this.max_chain=i,this.func=n}const It=[new Ot(0,0,0,0,St),new Ot(4,4,8,4,Dt),new Ot(4,5,16,8,Dt),new Ot(4,6,32,32,Dt),new Ot(4,4,16,16,Tt),new Ot(8,16,32,32,Tt),new Ot(8,16,128,128,Tt),new Ot(8,32,128,256,Tt),new Ot(32,128,258,1024,Tt),new Ot(32,258,258,4096,Tt)];function Ft(){this.strm=null,this.status=0,this.pending_buf=null,this.pending_buf_size=0,this.pending_out=0,this.pending=0,this.wrap=0,this.gzhead=null,this.gzindex=0,this.method=ft,this.last_flush=-1,this.w_size=0,this.w_bits=0,this.w_mask=0,this.window=null,this.window_size=0,this.prev=null,this.head=null,this.ins_h=0,this.hash_size=0,this.hash_bits=0,this.hash_mask=0,this.hash_shift=0,this.block_start=0,this.match_length=0,this.prev_match=0,this.match_available=0,this.strstart=0,this.match_start=0,this.lookahead=0,this.prev_length=0,this.max_chain_length=0,this.max_lazy_match=0,this.level=0,this.strategy=0,this.good_match=0,this.nice_match=0,this.dyn_ltree=new Uint16Array(1146),this.dyn_dtree=new Uint16Array(122),this.bl_tree=new Uint16Array(78),kt(this.dyn_ltree),kt(this.dyn_dtree),kt(this.bl_tree),this.l_desc=null,this.d_desc=null,this.bl_desc=null,this.bl_count=new Uint16Array(16),this.heap=new Uint16Array(573),kt(this.heap),this.heap_len=0,this.heap_max=0,this.depth=new Uint16Array(573),kt(this.depth),this.sym_buf=0,this.lit_bufsize=0,this.sym_next=0,this.sym_end=0,this.opt_len=0,this.static_len=0,this.matches=0,this.insert=0,this.bi_buf=0,this.bi_valid=0}const Lt=t=>{if(!t)return 1;const e=t.state;return!e||e.strm!==t||e.status!==wt&&57!==e.status&&69!==e.status&&73!==e.status&&91!==e.status&&103!==e.status&&e.status!==mt&&e.status!==bt?1:0},Nt=t=>{if(Lt(t))return gt(t,at);t.total_in=t.total_out=0,t.data_type=_t;const e=t.state;return e.pending=0,e.pending_out=0,e.wrap<0&&(e.wrap=-e.wrap),e.status=2===e.wrap?57:e.wrap?wt:mt,t.adler=2===e.wrap?0:1,e.last_flush=-2,P(e),tt},Bt=t=>{const e=Nt(t);var a;return e===tt&&((a=t.state).window_size=2*a.w_size,kt(a.head),a.max_lazy_match=It[a.level].max_lazy,a.good_match=It[a.level].good_length,a.nice_match=It[a.level].nice_length,a.max_chain_length=It[a.level].max_chain,a.strstart=0,a.block_start=0,a.lookahead=0,a.insert=0,a.match_length=a.prev_length=2,a.match_available=0,a.ins_h=0),e},Ct=(t,e,a,i,n,s)=>{if(!t)return at;let r=1;if(e===st&&(e=6),i<0?(r=0,i=-i):i>15&&(r=2,i-=16),n<1||n>9||a!==ft||i<8||i>15||e<0||e>9||s<0||s>ht||8===i&&1!==r)return gt(t,at);8===i&&(i=9);const o=new Ft;return t.state=o,o.strm=t,o.status=wt,o.wrap=r,o.gzhead=null,o.w_bits=i,o.w_size=1<<o.w_bits,o.w_mask=o.w_size-1,o.hash_bits=n+7,o.hash_size=1<<o.hash_bits,o.hash_mask=o.hash_size-1,o.hash_shift=~~((o.hash_bits+3-1)/3),o.window=new Uint8Array(2*o.w_size),o.head=new Uint16Array(o.hash_size),o.prev=new Uint16Array(o.w_size),o.lit_bufsize=1<<n+6,o.pending_buf_size=4*o.lit_bufsize,o.pending_buf=new Uint8Array(o.pending_buf_size),o.sym_buf=o.lit_bufsize,o.sym_end=3*(o.lit_bufsize-1),o.level=e,o.strategy=s,o.method=a,Bt(t)};var Mt={deflateInit:(t,e)=>Ct(t,e,ft,15,8,dt),deflateInit2:Ct,deflateReset:Bt,deflateResetKeep:Nt,deflateSetHeader:(t,e)=>Lt(t)||2!==t.state.wrap?at:(t.state.gzhead=e,tt),deflate:(t,e)=>{if(Lt(t)||e>$||e<0)return t?gt(t,at):at;const a=t.state;if(!t.output||0!==t.avail_in&&!t.input||a.status===bt&&e!==V)return gt(t,0===t.avail_out?nt:at);const i=a.last_flush;if(a.last_flush=e,0!==a.pending){if(xt(t),0===t.avail_out)return a.last_flush=-1,tt}else if(0===t.avail_in&&pt(e)<=pt(i)&&e!==V)return gt(t,nt);if(a.status===bt&&0!==t.avail_in)return gt(t,nt);if(a.status===wt&&0===a.wrap&&(a.status=mt),a.status===wt){let e=ft+(a.w_bits-8<<4)<<8,i=-1;if(i=a.strategy>=ot||a.level<2?0:a.level<6?1:6===a.level?2:3,e|=i<<6,0!==a.strstart&&(e|=32),e+=31-e%31,Et(a,e),0!==a.strstart&&(Et(a,t.adler>>>16),Et(a,65535&t.adler)),t.adler=1,a.status=mt,xt(t),0!==a.pending)return a.last_flush=-1,tt}if(57===a.status)if(t.adler=0,At(a,31),At(a,139),At(a,8),a.gzhead)At(a,(a.gzhead.text?1:0)+(a.gzhead.hcrc?2:0)+(a.gzhead.extra?4:0)+(a.gzhead.name?8:0)+(a.gzhead.comment?16:0)),At(a,255&a.gzhead.time),At(a,a.gzhead.time>>8&255),At(a,a.gzhead.time>>16&255),At(a,a.gzhead.time>>24&255),At(a,9===a.level?2:a.strategy>=ot||a.level<2?4:0),At(a,255&a.gzhead.os),a.gzhead.extra&&a.gzhead.extra.length&&(At(a,255&a.gzhead.extra.length),At(a,a.gzhead.extra.length>>8&255)),a.gzhead.hcrc&&(t.adler=H(t.adler,a.pending_buf,a.pending,0)),a.gzindex=0,a.status=69;else if(At(a,0),At(a,0),At(a,0),At(a,0),At(a,0),At(a,9===a.level?2:a.strategy>=ot||a.level<2?4:0),At(a,3),a.status=mt,xt(t),0!==a.pending)return a.last_flush=-1,tt;if(69===a.status){if(a.gzhead.extra){let e=a.pending,i=(65535&a.gzhead.extra.length)-a.gzindex;for(;a.pending+i>a.pending_buf_size;){let n=a.pending_buf_size-a.pending;if(a.pending_buf.set(a.gzhead.extra.subarray(a.gzindex,a.gzindex+n),a.pending),a.pending=a.pending_buf_size,a.gzhead.hcrc&&a.pending>e&&(t.adler=H(t.adler,a.pending_buf,a.pending-e,e)),a.gzindex+=n,xt(t),0!==a.pending)return a.last_flush=-1,tt;e=0,i-=n}let n=new Uint8Array(a.gzhead.extra);a.pending_buf.set(n.subarray(a.gzindex,a.gzindex+i),a.pending),a.pending+=i,a.gzhead.hcrc&&a.pending>e&&(t.adler=H(t.adler,a.pending_buf,a.pending-e,e)),a.gzindex=0}a.status=73}if(73===a.status){if(a.gzhead.name){let e,i=a.pending;do{if(a.pending===a.pending_buf_size){if(a.gzhead.hcrc&&a.pending>i&&(t.adler=H(t.adler,a.pending_buf,a.pending-i,i)),xt(t),0!==a.pending)return a.last_flush=-1,tt;i=0}e=a.gzindex<a.gzhead.name.length?255&a.gzhead.name.charCodeAt(a.gzindex++):0,At(a,e)}while(0!==e);a.gzhead.hcrc&&a.pending>i&&(t.adler=H(t.adler,a.pending_buf,a.pending-i,i)),a.gzindex=0}a.status=91}if(91===a.status){if(a.gzhead.comment){let e,i=a.pending;do{if(a.pending===a.pending_buf_size){if(a.gzhead.hcrc&&a.pending>i&&(t.adler=H(t.adler,a.pending_buf,a.pending-i,i)),xt(t),0!==a.pending)return a.last_flush=-1,tt;i=0}e=a.gzindex<a.gzhead.comment.length?255&a.gzhead.comment.charCodeAt(a.gzindex++):0,At(a,e)}while(0!==e);a.gzhead.hcrc&&a.pending>i&&(t.adler=H(t.adler,a.pending_buf,a.pending-i,i))}a.status=103}if(103===a.status){if(a.gzhead.hcrc){if(a.pending+2>a.pending_buf_size&&(xt(t),0!==a.pending))return a.last_flush=-1,tt;At(a,255&t.adler),At(a,t.adler>>8&255),t.adler=0}if(a.status=mt,xt(t),0!==a.pending)return a.last_flush=-1,tt}if(0!==t.avail_in||0!==a.lookahead||e!==q&&a.status!==bt){let i=0===a.level?St(a,e):a.strategy===ot?((t,e)=>{let a;for(;;){if(0===t.lookahead&&(Ut(t),0===t.lookahead)){if(e===q)return 1;break}if(t.match_length=0,a=X(t,0,t.window[t.strstart]),t.lookahead--,t.strstart++,a&&(zt(t,!1),0===t.strm.avail_out))return 1}return t.insert=0,e===V?(zt(t,!0),0===t.strm.avail_out?3:4):t.sym_next&&(zt(t,!1),0===t.strm.avail_out)?1:2})(a,e):a.strategy===lt?((t,e)=>{let a,i,n,s;const r=t.window;for(;;){if(t.lookahead<=ct){if(Ut(t),t.lookahead<=ct&&e===q)return 1;if(0===t.lookahead)break}if(t.match_length=0,t.lookahead>=3&&t.strstart>0&&(n=t.strstart-1,i=r[n],i===r[++n]&&i===r[++n]&&i===r[++n])){s=t.strstart+ct;do{}while(i===r[++n]&&i===r[++n]&&i===r[++n]&&i===r[++n]&&i===r[++n]&&i===r[++n]&&i===r[++n]&&i===r[++n]&&n<s);t.match_length=ct-(s-n),t.match_length>t.lookahead&&(t.match_length=t.lookahead)}if(t.match_length>=3?(a=X(t,1,t.match_length-3),t.lookahead-=t.match_length,t.strstart+=t.match_length,t.match_length=0):(a=X(t,0,t.window[t.strstart]),t.lookahead--,t.strstart++),a&&(zt(t,!1),0===t.strm.avail_out))return 1}return t.insert=0,e===V?(zt(t,!0),0===t.strm.avail_out?3:4):t.sym_next&&(zt(t,!1),0===t.strm.avail_out)?1:2})(a,e):It[a.level].func(a,e);if(3!==i&&4!==i||(a.status=bt),1===i||3===i)return 0===t.avail_out&&(a.last_flush=-1),tt;if(2===i&&(e===J?W(a):e!==$&&(Y(a,0,0,!1),e===Q&&(kt(a.head),0===a.lookahead&&(a.strstart=0,a.block_start=0,a.insert=0))),xt(t),0===t.avail_out))return a.last_flush=-1,tt}return e!==V?tt:a.wrap<=0?et:(2===a.wrap?(At(a,255&t.adler),At(a,t.adler>>8&255),At(a,t.adler>>16&255),At(a,t.adler>>24&255),At(a,255&t.total_in),At(a,t.total_in>>8&255),At(a,t.total_in>>16&255),At(a,t.total_in>>24&255)):(Et(a,t.adler>>>16),Et(a,65535&t.adler)),xt(t),a.wrap>0&&(a.wrap=-a.wrap),0!==a.pending?tt:et)},deflateEnd:t=>{if(Lt(t))return at;const e=t.state.status;return t.state=null,e===mt?gt(t,it):tt},deflateSetDictionary:(t,e)=>{let a=e.length;if(Lt(t))return at;const i=t.state,n=i.wrap;if(2===n||1===n&&i.status!==wt||i.lookahead)return at;if(1===n&&(t.adler=C(t.adler,e,a,0)),i.wrap=0,a>=i.w_size){0===n&&(kt(i.head),i.strstart=0,i.block_start=0,i.insert=0);let t=new Uint8Array(i.w_size);t.set(e.subarray(a-i.w_size,a),0),e=t,a=i.w_size}const s=t.avail_in,r=t.next_in,o=t.input;for(t.avail_in=a,t.next_in=0,t.input=e,Ut(i);i.lookahead>=3;){let t=i.strstart,e=i.lookahead-2;do{i.ins_h=yt(i,i.ins_h,i.window[t+3-1]),i.prev[t&i.w_mask]=i.head[i.ins_h],i.head[i.ins_h]=t,t++}while(--e);i.strstart=t,i.lookahead=2,Ut(i)}return i.strstart+=i.lookahead,i.block_start=i.strstart,i.insert=i.lookahead,i.lookahead=0,i.match_length=i.prev_length=2,i.match_available=0,t.next_in=r,t.input=o,t.avail_in=s,i.wrap=n,tt},deflateInfo:"pako deflate (from Nodeca project)"};const Ht=(t,e)=>Object.prototype.hasOwnProperty.call(t,e);var jt=function(t){const e=Array.prototype.slice.call(arguments,1);for(;e.length;){const a=e.shift();if(a){if("object"!=typeof a)throw new TypeError(a+"must be non-object");for(const e in a)Ht(a,e)&&(t[e]=a[e])}}return t},Kt=t=>{let e=0;for(let a=0,i=t.length;a<i;a++)e+=t[a].length;const a=new Uint8Array(e);for(let e=0,i=0,n=t.length;e<n;e++){let n=t[e];a.set(n,i),i+=n.length}return a};let Pt=!0;try{String.fromCharCode.apply(null,new Uint8Array(1))}catch(t){Pt=!1}const Yt=new Uint8Array(256);for(let t=0;t<256;t++)Yt[t]=t>=252?6:t>=248?5:t>=240?4:t>=224?3:t>=192?2:1;Yt[254]=Yt[254]=1;var Gt=t=>{if("function"==typeof TextEncoder&&TextEncoder.prototype.encode)return(new TextEncoder).encode(t);let e,a,i,n,s,r=t.length,o=0;for(n=0;n<r;n++)a=t.charCodeAt(n),55296==(64512&a)&&n+1<r&&(i=t.charCodeAt(n+1),56320==(64512&i)&&(a=65536+(a-55296<<10)+(i-56320),n++)),o+=a<128?1:a<2048?2:a<65536?3:4;for(e=new Uint8Array(o),s=0,n=0;s<o;n++)a=t.charCodeAt(n),55296==(64512&a)&&n+1<r&&(i=t.charCodeAt(n+1),56320==(64512&i)&&(a=65536+(a-55296<<10)+(i-56320),n++)),a<128?e[s++]=a:a<2048?(e[s++]=192|a>>>6,e[s++]=128|63&a):a<65536?(e[s++]=224|a>>>12,e[s++]=128|a>>>6&63,e[s++]=128|63&a):(e[s++]=240|a>>>18,e[s++]=128|a>>>12&63,e[s++]=128|a>>>6&63,e[s++]=128|63&a);return e},Xt=(t,e)=>{const a=e||t.length;if("function"==typeof TextDecoder&&TextDecoder.prototype.decode)return(new TextDecoder).decode(t.subarray(0,e));let i,n;const s=new Array(2*a);for(n=0,i=0;i<a;){let e=t[i++];if(e<128){s[n++]=e;continue}let r=Yt[e];if(r>4)s[n++]=65533,i+=r-1;else{for(e&=2===r?31:3===r?15:7;r>1&&i<a;)e=e<<6|63&t[i++],r--;r>1?s[n++]=65533:e<65536?s[n++]=e:(e-=65536,s[n++]=55296|e>>10&1023,s[n++]=56320|1023&e)}}return((t,e)=>{if(e<65534&&t.subarray&&Pt)return String.fromCharCode.apply(null,t.length===e?t:t.subarray(0,e));let a="";for(let i=0;i<e;i++)a+=String.fromCharCode(t[i]);return a})(s,n)},Wt=(t,e)=>{(e=e||t.length)>t.length&&(e=t.length);let a=e-1;for(;a>=0&&128==(192&t[a]);)a--;return a<0||0===a?e:a+Yt[t[a]]>e?a:e};var qt=function(){this.input=null,this.next_in=0,this.avail_in=0,this.total_in=0,this.output=null,this.next_out=0,this.avail_out=0,this.total_out=0,this.msg="",this.state=null,this.data_type=2,this.adler=0};const Jt=Object.prototype.toString,{Z_NO_FLUSH:Qt,Z_SYNC_FLUSH:Vt,Z_FULL_FLUSH:$t,Z_FINISH:te,Z_OK:ee,Z_STREAM_END:ae,Z_DEFAULT_COMPRESSION:ie,Z_DEFAULT_STRATEGY:ne,Z_DEFLATED:se}=K;function re(t){this.options=jt({level:ie,method:se,chunkSize:16384,windowBits:15,memLevel:8,strategy:ne},t||{});let e=this.options;e.raw&&e.windowBits>0?e.windowBits=-e.windowBits:e.gzip&&e.windowBits>0&&e.windowBits<16&&(e.windowBits+=16),this.err=0,this.msg="",this.ended=!1,this.chunks=[],this.strm=new qt,this.strm.avail_out=0;let a=Mt.deflateInit2(this.strm,e.level,e.method,e.windowBits,e.memLevel,e.strategy);if(a!==ee)throw new Error(j[a]);if(e.header&&Mt.deflateSetHeader(this.strm,e.header),e.dictionary){let t;if(t="string"==typeof e.dictionary?Gt(e.dictionary):"[object ArrayBuffer]"===Jt.call(e.dictionary)?new Uint8Array(e.dictionary):e.dictionary,a=Mt.deflateSetDictionary(this.strm,t),a!==ee)throw new Error(j[a]);this._dict_set=!0}}function oe(t,e){const a=new re(e);if(a.push(t,!0),a.err)throw a.msg||j[a.err];return a.result}re.prototype.push=function(t,e){const a=this.strm,i=this.options.chunkSize;let n,s;if(this.ended)return!1;for(s=e===~~e?e:!0===e?te:Qt,"string"==typeof t?a.input=Gt(t):"[object ArrayBuffer]"===Jt.call(t)?a.input=new Uint8Array(t):a.input=t,a.next_in=0,a.avail_in=a.input.length;;)if(0===a.avail_out&&(a.output=new Uint8Array(i),a.next_out=0,a.avail_out=i),(s===Vt||s===$t)&&a.avail_out<=6)this.onData(a.output.subarray(0,a.next_out)),a.avail_out=0;else{if(n=Mt.deflate(a,s),n===ae)return a.next_out>0&&this.onData(a.output.subarray(0,a.next_out)),n=Mt.deflateEnd(this.strm),this.onEnd(n),this.ended=!0,n===ee;if(0!==a.avail_out){if(s>0&&a.next_out>0)this.onData(a.output.subarray(0,a.next_out)),a.avail_out=0;else if(0===a.avail_in)break}else this.onData(a.output)}return!0},re.prototype.onData=function(t){this.chunks.push(t)},re.prototype.onEnd=function(t){t===ee&&(this.result=Kt(this.chunks)),this.chunks=[],this.err=t,this.msg=this.strm.msg};var le={Deflate:re,deflate:oe,deflateRaw:function(t,e){return(e=e||{}).raw=!0,oe(t,e)},gzip:function(t,e){return(e=e||{}).gzip=!0,oe(t,e)},constants:K};const he=16209;var de=function(t,e){let a,i,n,s,r,o,l,h,d,_,f,c,u,w,m,b,g,p,k,v,y,x,z,A;const E=t.state;a=t.next_in,z=t.input,i=a+(t.avail_in-5),n=t.next_out,A=t.output,s=n-(e-t.avail_out),r=n+(t.avail_out-257),o=E.dmax,l=E.wsize,h=E.whave,d=E.wnext,_=E.window,f=E.hold,c=E.bits,u=E.lencode,w=E.distcode,m=(1<<E.lenbits)-1,b=(1<<E.distbits)-1;t:do{c<15&&(f+=z[a++]<<c,c+=8,f+=z[a++]<<c,c+=8),g=u[f&m];e:for(;;){if(p=g>>>24,f>>>=p,c-=p,p=g>>>16&255,0===p)A[n++]=65535&g;else{if(!(16&p)){if(0==(64&p)){g=u[(65535&g)+(f&(1<<p)-1)];continue e}if(32&p){E.mode=16191;break t}t.msg="invalid literal/length code",E.mode=he;break t}k=65535&g,p&=15,p&&(c<p&&(f+=z[a++]<<c,c+=8),k+=f&(1<<p)-1,f>>>=p,c-=p),c<15&&(f+=z[a++]<<c,c+=8,f+=z[a++]<<c,c+=8),g=w[f&b];a:for(;;){if(p=g>>>24,f>>>=p,c-=p,p=g>>>16&255,!(16&p)){if(0==(64&p)){g=w[(65535&g)+(f&(1<<p)-1)];continue a}t.msg="invalid distance code",E.mode=he;break t}if(v=65535&g,p&=15,c<p&&(f+=z[a++]<<c,c+=8,c<p&&(f+=z[a++]<<c,c+=8)),v+=f&(1<<p)-1,v>o){t.msg="invalid distance too far back",E.mode=he;break t}if(f>>>=p,c-=p,p=n-s,v>p){if(p=v-p,p>h&&E.sane){t.msg="invalid distance too far back",E.mode=he;break t}if(y=0,x=_,0===d){if(y+=l-p,p<k){k-=p;do{A[n++]=_[y++]}while(--p);y=n-v,x=A}}else if(d<p){if(y+=l+d-p,p-=d,p<k){k-=p;do{A[n++]=_[y++]}while(--p);if(y=0,d<k){p=d,k-=p;do{A[n++]=_[y++]}while(--p);y=n-v,x=A}}}else if(y+=d-p,p<k){k-=p;do{A[n++]=_[y++]}while(--p);y=n-v,x=A}for(;k>2;)A[n++]=x[y++],A[n++]=x[y++],A[n++]=x[y++],k-=3;k&&(A[n++]=x[y++],k>1&&(A[n++]=x[y++]))}else{y=n-v;do{A[n++]=A[y++],A[n++]=A[y++],A[n++]=A[y++],k-=3}while(k>2);k&&(A[n++]=A[y++],k>1&&(A[n++]=A[y++]))}break}}break}}while(a<i&&n<r);k=c>>3,a-=k,c-=k<<3,f&=(1<<c)-1,t.next_in=a,t.next_out=n,t.avail_in=a<i?i-a+5:5-(a-i),t.avail_out=n<r?r-n+257:257-(n-r),E.hold=f,E.bits=c};const _e=15,fe=new Uint16Array([3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258,0,0]),ce=new Uint8Array([16,16,16,16,16,16,16,16,17,17,17,17,18,18,18,18,19,19,19,19,20,20,20,20,21,21,21,21,16,72,78]),ue=new Uint16Array([1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577,0,0]),we=new Uint8Array([16,16,16,16,17,17,18,18,19,19,20,20,21,21,22,22,23,23,24,24,25,25,26,26,27,27,28,28,29,29,64,64]);var me=(t,e,a,i,n,s,r,o)=>{const l=o.bits;let h,d,_,f,c,u,w=0,m=0,b=0,g=0,p=0,k=0,v=0,y=0,x=0,z=0,A=null;const E=new Uint16Array(16),R=new Uint16Array(16);let Z,U,S,D=null;for(w=0;w<=_e;w++)E[w]=0;for(m=0;m<i;m++)E[e[a+m]]++;for(p=l,g=_e;g>=1&&0===E[g];g--);if(p>g&&(p=g),0===g)return n[s++]=20971520,n[s++]=20971520,o.bits=1,0;for(b=1;b<g&&0===E[b];b++);for(p<b&&(p=b),y=1,w=1;w<=_e;w++)if(y<<=1,y-=E[w],y<0)return-1;if(y>0&&(0===t||1!==g))return-1;for(R[1]=0,w=1;w<_e;w++)R[w+1]=R[w]+E[w];for(m=0;m<i;m++)0!==e[a+m]&&(r[R[e[a+m]]++]=m);if(0===t?(A=D=r,u=20):1===t?(A=fe,D=ce,u=257):(A=ue,D=we,u=0),z=0,m=0,w=b,c=s,k=p,v=0,_=-1,x=1<<p,f=x-1,1===t&&x>852||2===t&&x>592)return 1;for(;;){Z=w-v,r[m]+1<u?(U=0,S=r[m]):r[m]>=u?(U=D[r[m]-u],S=A[r[m]-u]):(U=96,S=0),h=1<<w-v,d=1<<k,b=d;do{d-=h,n[c+(z>>v)+d]=Z<<24|U<<16|S|0}while(0!==d);for(h=1<<w-1;z&h;)h>>=1;if(0!==h?(z&=h-1,z+=h):z=0,m++,0==--E[w]){if(w===g)break;w=e[a+r[m]]}if(w>p&&(z&f)!==_){for(0===v&&(v=p),c+=b,k=w-v,y=1<<k;k+v<g&&(y-=E[k+v],!(y<=0));)k++,y<<=1;if(x+=1<<k,1===t&&x>852||2===t&&x>592)return 1;_=z&f,n[_]=p<<24|k<<16|c-s|0}}return 0!==z&&(n[c+z]=w-v<<24|64<<16|0),o.bits=p,0};const{Z_FINISH:be,Z_BLOCK:ge,Z_TREES:pe,Z_OK:ke,Z_STREAM_END:ve,Z_NEED_DICT:ye,Z_STREAM_ERROR:xe,Z_DATA_ERROR:ze,Z_MEM_ERROR:Ae,Z_BUF_ERROR:Ee,Z_DEFLATED:Re}=K,Ze=16180,Ue=16190,Se=16191,De=16192,Te=16194,Oe=16199,Ie=16200,Fe=16206,Le=16209,Ne=t=>(t>>>24&255)+(t>>>8&65280)+((65280&t)<<8)+((255&t)<<24);function Be(){this.strm=null,this.mode=0,this.last=!1,this.wrap=0,this.havedict=!1,this.flags=0,this.dmax=0,this.check=0,this.total=0,this.head=null,this.wbits=0,this.wsize=0,this.whave=0,this.wnext=0,this.window=null,this.hold=0,this.bits=0,this.length=0,this.offset=0,this.extra=0,this.lencode=null,this.distcode=null,this.lenbits=0,this.distbits=0,this.ncode=0,this.nlen=0,this.ndist=0,this.have=0,this.next=null,this.lens=new Uint16Array(320),this.work=new Uint16Array(288),this.lendyn=null,this.distdyn=null,this.sane=0,this.back=0,this.was=0}const Ce=t=>{if(!t)return 1;const e=t.state;return!e||e.strm!==t||e.mode<Ze||e.mode>16211?1:0},Me=t=>{if(Ce(t))return xe;const e=t.state;return t.total_in=t.total_out=e.total=0,t.msg="",e.wrap&&(t.adler=1&e.wrap),e.mode=Ze,e.last=0,e.havedict=0,e.flags=-1,e.dmax=32768,e.head=null,e.hold=0,e.bits=0,e.lencode=e.lendyn=new Int32Array(852),e.distcode=e.distdyn=new Int32Array(592),e.sane=1,e.back=-1,ke},He=t=>{if(Ce(t))return xe;const e=t.state;return e.wsize=0,e.whave=0,e.wnext=0,Me(t)},je=(t,e)=>{let a;if(Ce(t))return xe;const i=t.state;return e<0?(a=0,e=-e):(a=5+(e>>4),e<48&&(e&=15)),e&&(e<8||e>15)?xe:(null!==i.window&&i.wbits!==e&&(i.window=null),i.wrap=a,i.wbits=e,He(t))},Ke=(t,e)=>{if(!t)return xe;const a=new Be;t.state=a,a.strm=t,a.window=null,a.mode=Ze;const i=je(t,e);return i!==ke&&(t.state=null),i};let Pe,Ye,Ge=!0;const Xe=t=>{if(Ge){Pe=new Int32Array(512),Ye=new Int32Array(32);let e=0;for(;e<144;)t.lens[e++]=8;for(;e<256;)t.lens[e++]=9;for(;e<280;)t.lens[e++]=7;for(;e<288;)t.lens[e++]=8;for(me(1,t.lens,0,288,Pe,0,t.work,{bits:9}),e=0;e<32;)t.lens[e++]=5;me(2,t.lens,0,32,Ye,0,t.work,{bits:5}),Ge=!1}t.lencode=Pe,t.lenbits=9,t.distcode=Ye,t.distbits=5},We=(t,e,a,i)=>{let n;const s=t.state;return null===s.window&&(s.wsize=1<<s.wbits,s.wnext=0,s.whave=0,s.window=new Uint8Array(s.wsize)),i>=s.wsize?(s.window.set(e.subarray(a-s.wsize,a),0),s.wnext=0,s.whave=s.wsize):(n=s.wsize-s.wnext,n>i&&(n=i),s.window.set(e.subarray(a-i,a-i+n),s.wnext),(i-=n)?(s.window.set(e.subarray(a-i,a),0),s.wnext=i,s.whave=s.wsize):(s.wnext+=n,s.wnext===s.wsize&&(s.wnext=0),s.whave<s.wsize&&(s.whave+=n))),0};var qe={inflateReset:He,inflateReset2:je,inflateResetKeep:Me,inflateInit:t=>Ke(t,15),inflateInit2:Ke,inflate:(t,e)=>{let a,i,n,s,r,o,l,h,d,_,f,c,u,w,m,b,g,p,k,v,y,x,z=0;const A=new Uint8Array(4);let E,R;const Z=new Uint8Array([16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15]);if(Ce(t)||!t.output||!t.input&&0!==t.avail_in)return xe;a=t.state,a.mode===Se&&(a.mode=De),r=t.next_out,n=t.output,l=t.avail_out,s=t.next_in,i=t.input,o=t.avail_in,h=a.hold,d=a.bits,_=o,f=l,x=ke;t:for(;;)switch(a.mode){case Ze:if(0===a.wrap){a.mode=De;break}for(;d<16;){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}if(2&a.wrap&&35615===h){0===a.wbits&&(a.wbits=15),a.check=0,A[0]=255&h,A[1]=h>>>8&255,a.check=H(a.check,A,2,0),h=0,d=0,a.mode=16181;break}if(a.head&&(a.head.done=!1),!(1&a.wrap)||(((255&h)<<8)+(h>>8))%31){t.msg="incorrect header check",a.mode=Le;break}if((15&h)!==Re){t.msg="unknown compression method",a.mode=Le;break}if(h>>>=4,d-=4,y=8+(15&h),0===a.wbits&&(a.wbits=y),y>15||y>a.wbits){t.msg="invalid window size",a.mode=Le;break}a.dmax=1<<a.wbits,a.flags=0,t.adler=a.check=1,a.mode=512&h?16189:Se,h=0,d=0;break;case 16181:for(;d<16;){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}if(a.flags=h,(255&a.flags)!==Re){t.msg="unknown compression method",a.mode=Le;break}if(57344&a.flags){t.msg="unknown header flags set",a.mode=Le;break}a.head&&(a.head.text=h>>8&1),512&a.flags&&4&a.wrap&&(A[0]=255&h,A[1]=h>>>8&255,a.check=H(a.check,A,2,0)),h=0,d=0,a.mode=16182;case 16182:for(;d<32;){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}a.head&&(a.head.time=h),512&a.flags&&4&a.wrap&&(A[0]=255&h,A[1]=h>>>8&255,A[2]=h>>>16&255,A[3]=h>>>24&255,a.check=H(a.check,A,4,0)),h=0,d=0,a.mode=16183;case 16183:for(;d<16;){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}a.head&&(a.head.xflags=255&h,a.head.os=h>>8),512&a.flags&&4&a.wrap&&(A[0]=255&h,A[1]=h>>>8&255,a.check=H(a.check,A,2,0)),h=0,d=0,a.mode=16184;case 16184:if(1024&a.flags){for(;d<16;){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}a.length=h,a.head&&(a.head.extra_len=h),512&a.flags&&4&a.wrap&&(A[0]=255&h,A[1]=h>>>8&255,a.check=H(a.check,A,2,0)),h=0,d=0}else a.head&&(a.head.extra=null);a.mode=16185;case 16185:if(1024&a.flags&&(c=a.length,c>o&&(c=o),c&&(a.head&&(y=a.head.extra_len-a.length,a.head.extra||(a.head.extra=new Uint8Array(a.head.extra_len)),a.head.extra.set(i.subarray(s,s+c),y)),512&a.flags&&4&a.wrap&&(a.check=H(a.check,i,c,s)),o-=c,s+=c,a.length-=c),a.length))break t;a.length=0,a.mode=16186;case 16186:if(2048&a.flags){if(0===o)break t;c=0;do{y=i[s+c++],a.head&&y&&a.length<65536&&(a.head.name+=String.fromCharCode(y))}while(y&&c<o);if(512&a.flags&&4&a.wrap&&(a.check=H(a.check,i,c,s)),o-=c,s+=c,y)break t}else a.head&&(a.head.name=null);a.length=0,a.mode=16187;case 16187:if(4096&a.flags){if(0===o)break t;c=0;do{y=i[s+c++],a.head&&y&&a.length<65536&&(a.head.comment+=String.fromCharCode(y))}while(y&&c<o);if(512&a.flags&&4&a.wrap&&(a.check=H(a.check,i,c,s)),o-=c,s+=c,y)break t}else a.head&&(a.head.comment=null);a.mode=16188;case 16188:if(512&a.flags){for(;d<16;){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}if(4&a.wrap&&h!==(65535&a.check)){t.msg="header crc mismatch",a.mode=Le;break}h=0,d=0}a.head&&(a.head.hcrc=a.flags>>9&1,a.head.done=!0),t.adler=a.check=0,a.mode=Se;break;case 16189:for(;d<32;){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}t.adler=a.check=Ne(h),h=0,d=0,a.mode=Ue;case Ue:if(0===a.havedict)return t.next_out=r,t.avail_out=l,t.next_in=s,t.avail_in=o,a.hold=h,a.bits=d,ye;t.adler=a.check=1,a.mode=Se;case Se:if(e===ge||e===pe)break t;case De:if(a.last){h>>>=7&d,d-=7&d,a.mode=Fe;break}for(;d<3;){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}switch(a.last=1&h,h>>>=1,d-=1,3&h){case 0:a.mode=16193;break;case 1:if(Xe(a),a.mode=Oe,e===pe){h>>>=2,d-=2;break t}break;case 2:a.mode=16196;break;case 3:t.msg="invalid block type",a.mode=Le}h>>>=2,d-=2;break;case 16193:for(h>>>=7&d,d-=7&d;d<32;){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}if((65535&h)!=(h>>>16^65535)){t.msg="invalid stored block lengths",a.mode=Le;break}if(a.length=65535&h,h=0,d=0,a.mode=Te,e===pe)break t;case Te:a.mode=16195;case 16195:if(c=a.length,c){if(c>o&&(c=o),c>l&&(c=l),0===c)break t;n.set(i.subarray(s,s+c),r),o-=c,s+=c,l-=c,r+=c,a.length-=c;break}a.mode=Se;break;case 16196:for(;d<14;){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}if(a.nlen=257+(31&h),h>>>=5,d-=5,a.ndist=1+(31&h),h>>>=5,d-=5,a.ncode=4+(15&h),h>>>=4,d-=4,a.nlen>286||a.ndist>30){t.msg="too many length or distance symbols",a.mode=Le;break}a.have=0,a.mode=16197;case 16197:for(;a.have<a.ncode;){for(;d<3;){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}a.lens[Z[a.have++]]=7&h,h>>>=3,d-=3}for(;a.have<19;)a.lens[Z[a.have++]]=0;if(a.lencode=a.lendyn,a.lenbits=7,E={bits:a.lenbits},x=me(0,a.lens,0,19,a.lencode,0,a.work,E),a.lenbits=E.bits,x){t.msg="invalid code lengths set",a.mode=Le;break}a.have=0,a.mode=16198;case 16198:for(;a.have<a.nlen+a.ndist;){for(;z=a.lencode[h&(1<<a.lenbits)-1],m=z>>>24,b=z>>>16&255,g=65535&z,!(m<=d);){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}if(g<16)h>>>=m,d-=m,a.lens[a.have++]=g;else{if(16===g){for(R=m+2;d<R;){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}if(h>>>=m,d-=m,0===a.have){t.msg="invalid bit length repeat",a.mode=Le;break}y=a.lens[a.have-1],c=3+(3&h),h>>>=2,d-=2}else if(17===g){for(R=m+3;d<R;){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}h>>>=m,d-=m,y=0,c=3+(7&h),h>>>=3,d-=3}else{for(R=m+7;d<R;){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}h>>>=m,d-=m,y=0,c=11+(127&h),h>>>=7,d-=7}if(a.have+c>a.nlen+a.ndist){t.msg="invalid bit length repeat",a.mode=Le;break}for(;c--;)a.lens[a.have++]=y}}if(a.mode===Le)break;if(0===a.lens[256]){t.msg="invalid code -- missing end-of-block",a.mode=Le;break}if(a.lenbits=9,E={bits:a.lenbits},x=me(1,a.lens,0,a.nlen,a.lencode,0,a.work,E),a.lenbits=E.bits,x){t.msg="invalid literal/lengths set",a.mode=Le;break}if(a.distbits=6,a.distcode=a.distdyn,E={bits:a.distbits},x=me(2,a.lens,a.nlen,a.ndist,a.distcode,0,a.work,E),a.distbits=E.bits,x){t.msg="invalid distances set",a.mode=Le;break}if(a.mode=Oe,e===pe)break t;case Oe:a.mode=Ie;case Ie:if(o>=6&&l>=258){t.next_out=r,t.avail_out=l,t.next_in=s,t.avail_in=o,a.hold=h,a.bits=d,de(t,f),r=t.next_out,n=t.output,l=t.avail_out,s=t.next_in,i=t.input,o=t.avail_in,h=a.hold,d=a.bits,a.mode===Se&&(a.back=-1);break}for(a.back=0;z=a.lencode[h&(1<<a.lenbits)-1],m=z>>>24,b=z>>>16&255,g=65535&z,!(m<=d);){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}if(b&&0==(240&b)){for(p=m,k=b,v=g;z=a.lencode[v+((h&(1<<p+k)-1)>>p)],m=z>>>24,b=z>>>16&255,g=65535&z,!(p+m<=d);){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}h>>>=p,d-=p,a.back+=p}if(h>>>=m,d-=m,a.back+=m,a.length=g,0===b){a.mode=16205;break}if(32&b){a.back=-1,a.mode=Se;break}if(64&b){t.msg="invalid literal/length code",a.mode=Le;break}a.extra=15&b,a.mode=16201;case 16201:if(a.extra){for(R=a.extra;d<R;){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}a.length+=h&(1<<a.extra)-1,h>>>=a.extra,d-=a.extra,a.back+=a.extra}a.was=a.length,a.mode=16202;case 16202:for(;z=a.distcode[h&(1<<a.distbits)-1],m=z>>>24,b=z>>>16&255,g=65535&z,!(m<=d);){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}if(0==(240&b)){for(p=m,k=b,v=g;z=a.distcode[v+((h&(1<<p+k)-1)>>p)],m=z>>>24,b=z>>>16&255,g=65535&z,!(p+m<=d);){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}h>>>=p,d-=p,a.back+=p}if(h>>>=m,d-=m,a.back+=m,64&b){t.msg="invalid distance code",a.mode=Le;break}a.offset=g,a.extra=15&b,a.mode=16203;case 16203:if(a.extra){for(R=a.extra;d<R;){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}a.offset+=h&(1<<a.extra)-1,h>>>=a.extra,d-=a.extra,a.back+=a.extra}if(a.offset>a.dmax){t.msg="invalid distance too far back",a.mode=Le;break}a.mode=16204;case 16204:if(0===l)break t;if(c=f-l,a.offset>c){if(c=a.offset-c,c>a.whave&&a.sane){t.msg="invalid distance too far back",a.mode=Le;break}c>a.wnext?(c-=a.wnext,u=a.wsize-c):u=a.wnext-c,c>a.length&&(c=a.length),w=a.window}else w=n,u=r-a.offset,c=a.length;c>l&&(c=l),l-=c,a.length-=c;do{n[r++]=w[u++]}while(--c);0===a.length&&(a.mode=Ie);break;case 16205:if(0===l)break t;n[r++]=a.length,l--,a.mode=Ie;break;case Fe:if(a.wrap){for(;d<32;){if(0===o)break t;o--,h|=i[s++]<<d,d+=8}if(f-=l,t.total_out+=f,a.total+=f,4&a.wrap&&f&&(t.adler=a.check=a.flags?H(a.check,n,f,r-f):C(a.check,n,f,r-f)),f=l,4&a.wrap&&(a.flags?h:Ne(h))!==a.check){t.msg="incorrect data check",a.mode=Le;break}h=0,d=0}a.mode=16207;case 16207:if(a.wrap&&a.flags){for(;d<32;){if(0===o)break t;o--,h+=i[s++]<<d,d+=8}if(4&a.wrap&&h!==(4294967295&a.total)){t.msg="incorrect length check",a.mode=Le;break}h=0,d=0}a.mode=16208;case 16208:x=ve;break t;case Le:x=ze;break t;case 16210:return Ae;default:return xe}return t.next_out=r,t.avail_out=l,t.next_in=s,t.avail_in=o,a.hold=h,a.bits=d,(a.wsize||f!==t.avail_out&&a.mode<Le&&(a.mode<Fe||e!==be))&&We(t,t.output,t.next_out,f-t.avail_out),_-=t.avail_in,f-=t.avail_out,t.total_in+=_,t.total_out+=f,a.total+=f,4&a.wrap&&f&&(t.adler=a.check=a.flags?H(a.check,n,f,t.next_out-f):C(a.check,n,f,t.next_out-f)),t.data_type=a.bits+(a.last?64:0)+(a.mode===Se?128:0)+(a.mode===Oe||a.mode===Te?256:0),(0===_&&0===f||e===be)&&x===ke&&(x=Ee),x},inflateEnd:t=>{if(Ce(t))return xe;let e=t.state;return e.window&&(e.window=null),t.state=null,ke},inflateGetHeader:(t,e)=>{if(Ce(t))return xe;const a=t.state;return 0==(2&a.wrap)?xe:(a.head=e,e.done=!1,ke)},inflateSetDictionary:(t,e)=>{const a=e.length;let i,n,s;return Ce(t)?xe:(i=t.state,0!==i.wrap&&i.mode!==Ue?xe:i.mode===Ue&&(n=1,n=C(n,e,a,0),n!==i.check)?ze:(s=We(t,e,a,a),s?(i.mode=16210,Ae):(i.havedict=1,ke)))},inflateInfo:"pako inflate (from Nodeca project)"};var Je=function(){this.text=0,this.time=0,this.xflags=0,this.os=0,this.extra=null,this.extra_len=0,this.name="",this.comment="",this.hcrc=0,this.done=!1};const Qe=Object.prototype.toString,{Z_NO_FLUSH:Ve,Z_FINISH:$e,Z_OK:ta,Z_STREAM_END:ea,Z_NEED_DICT:aa,Z_STREAM_ERROR:ia,Z_DATA_ERROR:na,Z_MEM_ERROR:sa}=K;function ra(t){this.options=jt({chunkSize:65536,windowBits:15,to:""},t||{});const e=this.options;e.raw&&e.windowBits>=0&&e.windowBits<16&&(e.windowBits=-e.windowBits,0===e.windowBits&&(e.windowBits=-15)),!(e.windowBits>=0&&e.windowBits<16)||t&&t.windowBits||(e.windowBits+=32),e.windowBits>15&&e.windowBits<48&&0==(15&e.windowBits)&&(e.windowBits|=15),this.err=0,this.msg="",this.ended=!1,this.chunks=[],this.strm=new qt,this.strm.avail_out=0;let a=qe.inflateInit2(this.strm,e.windowBits);if(a!==ta)throw new Error(j[a]);if(this.header=new Je,qe.inflateGetHeader(this.strm,this.header),e.dictionary&&("string"==typeof e.dictionary?e.dictionary=Gt(e.dictionary):"[object ArrayBuffer]"===Qe.call(e.dictionary)&&(e.dictionary=new Uint8Array(e.dictionary)),e.raw&&(a=qe.inflateSetDictionary(this.strm,e.dictionary),a!==ta)))throw new Error(j[a])}function oa(t,e){const a=new ra(e);if(a.push(t),a.err)throw a.msg||j[a.err];return a.result}ra.prototype.push=function(t,e){const a=this.strm,i=this.options.chunkSize,n=this.options.dictionary;let s,r,o;if(this.ended)return!1;for(r=e===~~e?e:!0===e?$e:Ve,"[object ArrayBuffer]"===Qe.call(t)?a.input=new Uint8Array(t):a.input=t,a.next_in=0,a.avail_in=a.input.length;;){for(0===a.avail_out&&(a.output=new Uint8Array(i),a.next_out=0,a.avail_out=i),s=qe.inflate(a,r),s===aa&&n&&(s=qe.inflateSetDictionary(a,n),s===ta?s=qe.inflate(a,r):s===na&&(s=aa));a.avail_in>0&&s===ea&&a.state.wrap>0&&0!==t[a.next_in];)qe.inflateReset(a),s=qe.inflate(a,r);switch(s){case ia:case na:case aa:case sa:return this.onEnd(s),this.ended=!0,!1}if(o=a.avail_out,a.next_out&&(0===a.avail_out||s===ea))if("string"===this.options.to){let t=Wt(a.output,a.next_out),e=a.next_out-t,n=Xt(a.output,t);a.next_out=e,a.avail_out=i-e,e&&a.output.set(a.output.subarray(t,t+e),0),this.onData(n)}else this.onData(a.output.length===a.next_out?a.output:a.output.subarray(0,a.next_out));if(s!==ta||0!==o){if(s===ea)return s=qe.inflateEnd(this.strm),this.onEnd(s),this.ended=!0,!0;if(0===a.avail_in)break}}return!0},ra.prototype.onData=function(t){this.chunks.push(t)},ra.prototype.onEnd=function(t){t===ta&&("string"===this.options.to?this.result=this.chunks.join(""):this.result=Kt(this.chunks)),this.chunks=[],this.err=t,this.msg=this.strm.msg};var la={Inflate:ra,inflate:oa,inflateRaw:function(t,e){return(e=e||{}).raw=!0,oa(t,e)},ungzip:oa,constants:K};const{Deflate:ha,deflate:da,deflateRaw:_a,gzip:fa}=le,{Inflate:ca,inflate:ua,inflateRaw:wa,ungzip:ma}=la;var ba=ha,ga=da,pa=_a,ka=fa,va=ca,ya=ua,xa=wa,za=ma,Aa=K,Ea={Deflate:ba,deflate:ga,deflateRaw:pa,gzip:ka,Inflate:va,inflate:ya,inflateRaw:xa,ungzip:za,constants:Aa};t.Deflate=ba,t.Inflate=va,t.constants=Aa,t.default=Ea,t.deflate=ga,t.deflateRaw=pa,t.gzip=ka,t.inflate=ya,t.inflateRaw=xa,t.ungzip=za,Object.defineProperty(t,"__esModule",{value:!0})}));
 </script>
+  <!-- Keylay native UR (BC-UR) codec — ORIGINAL Keylay code, not a vendored dependency.
+       Algorithm ported from the BC-UR spec / @ngraveio/bc-ur (bytewords, fountain codes,
+       xoshiro256**) plus crypto-output/crypto-account -> BIP-380 descriptor reconstruction.
+       Source of truth: tools/ur-native.mjs (this block is generated from it). Covered by the
+       index.html release hash; validated against bc-ur + embit as oracles in
+       tools/ur-oracle-test.mjs (81/81). No node polyfills; Uint8Array + BigInt only. -->
   <script>
-    // *** Keylay v0.8.0 - BINARY FILE RELAY + BBQR ENCODE/DECODE ***
-    console.log("🚀 Keylay v0.8.0 - Binary PSBT relay, BBQR encoder, corrected BBQR decoder");
+  window.KeylayUR = (function () {
+// ============================================================================
+// Native UR (Uniform Resources / BC-UR) codec for Keylay
+// ----------------------------------------------------------------------------
+// A dependency-free port of the parts of @ngraveio/bc-ur that Keylay needs:
+//   - bytewords (minimal style) encode/decode with CRC-32 checksum
+//   - fountain-code decode (pure + mixed parts) and encode
+//   - just enough CBOR for the fountain part header and for unwrapping
+//     crypto-psbt / ur:bytes (byte strings) and ur:output-descriptor (text)
+//
+// Algorithm is ported faithfully from bc-ur so it interoperates with real
+// wallets (Sparrow, Keystone, Passport, Jade, Nunchuk). Correctness is checked
+// against bc-ur itself as an oracle in ur-oracle-test.mjs.
+//
+// Browser-target: uses Uint8Array + native BigInt only. No Node Buffer.
+// ============================================================================
+
+// ---------- byte helpers ----------
+function bytesToHex(u8) {
+  let s = '';
+  for (let i = 0; i < u8.length; i++) s += (u8[i] < 16 ? '0' : '') + u8[i].toString(16);
+  return s;
+}
+function hexToBytes(hex) {
+  const len = hex.length >> 1;
+  const out = new Uint8Array(len);
+  for (let i = 0; i < len; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+  return out;
+}
+function concatBytes(arrays) {
+  let total = 0;
+  for (const a of arrays) total += a.length;
+  const out = new Uint8Array(total);
+  let o = 0;
+  for (const a of arrays) { out.set(a, o); o += a.length; }
+  return out;
+}
+function bytesEqual(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+// big-endian uint32 -> 4 bytes
+function intToBytes(num) {
+  const u8 = new Uint8Array(4);
+  new DataView(u8.buffer).setUint32(0, num >>> 0, false);
+  return u8;
+}
+
+// ---------- CRC-32 (ISO-HDLC, reflected, poly 0xEDB88320) ----------
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes) {
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) crc = CRC_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+// ---------- SHA-256 (synchronous; used only to seed the fountain PRNG) ----------
+const SHA_K = new Uint32Array([
+  0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+  0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+  0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+  0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+  0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+  0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+  0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+  0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
+function sha256(msg) {
+  const h = new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);
+  const l = msg.length;
+  const withOne = new Uint8Array((((l + 8) >> 6) + 1) << 6);
+  withOne.set(msg);
+  withOne[l] = 0x80;
+  const bitLen = l * 8;
+  const dv = new DataView(withOne.buffer);
+  dv.setUint32(withOne.length - 4, bitLen >>> 0, false);
+  dv.setUint32(withOne.length - 8, Math.floor(bitLen / 0x100000000), false);
+  const w = new Uint32Array(64);
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+  for (let off = 0; off < withOne.length; off += 64) {
+    for (let i = 0; i < 16; i++) w[i] = dv.getUint32(off + i * 4, false);
+    for (let i = 16; i < 64; i++) {
+      const s0 = rotr(w[i-15],7) ^ rotr(w[i-15],18) ^ (w[i-15] >>> 3);
+      const s1 = rotr(w[i-2],17) ^ rotr(w[i-2],19) ^ (w[i-2] >>> 10);
+      w[i] = (w[i-16] + s0 + w[i-7] + s1) >>> 0;
+    }
+    let [a,b,c,d,e,f,g,hh] = h;
+    for (let i = 0; i < 64; i++) {
+      const S1 = rotr(e,6) ^ rotr(e,11) ^ rotr(e,25);
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (hh + S1 + ch + SHA_K[i] + w[i]) >>> 0;
+      const S0 = rotr(a,2) ^ rotr(a,13) ^ rotr(a,22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const t2 = (S0 + maj) >>> 0;
+      hh=g; g=f; f=e; e=(d+t1)>>>0; d=c; c=b; b=a; a=(t1+t2)>>>0;
+    }
+    h[0]=(h[0]+a)>>>0; h[1]=(h[1]+b)>>>0; h[2]=(h[2]+c)>>>0; h[3]=(h[3]+d)>>>0;
+    h[4]=(h[4]+e)>>>0; h[5]=(h[5]+f)>>>0; h[6]=(h[6]+g)>>>0; h[7]=(h[7]+hh)>>>0;
+  }
+  const out = new Uint8Array(32);
+  const odv = new DataView(out.buffer);
+  for (let i = 0; i < 8; i++) odv.setUint32(i * 4, h[i], false);
+  return out;
+}
+
+// ---------- Bytewords (minimal style) ----------
+const BYTEWORDS = 'ableacidalsoapexaquaarchatomauntawayaxisbackbaldbarnbeltbetabiasbluebodybragbrewbulbbuzzcalmcashcatschefcityclawcodecolacookcostcruxcurlcuspcyandarkdatadaysdelidicedietdoordowndrawdropdrumdulldutyeacheasyechoedgeepicevenexamexiteyesfactfairfernfigsfilmfishfizzflapflewfluxfoxyfreefrogfuelfundgalagamegeargemsgiftgirlglowgoodgraygrimgurugushgyrohalfhanghardhawkheathelphighhillholyhopehornhutsicedideaidleinchinkyintoirisironitemjadejazzjoinjoltjowljudojugsjumpjunkjurykeepkenokeptkeyskickkilnkingkitekiwiknoblamblavalazyleaflegsliarlimplionlistlogoloudloveluaulucklungmainmanymathmazememomenumeowmildmintmissmonknailnavyneednewsnextnoonnotenumbobeyoboeomitonyxopenovalowlspaidpartpeckplaypluspoempoolposepuffpumapurrquadquizraceramprealredorichroadrockroofrubyruinrunsrustsafesagascarsetssilkskewslotsoapsolosongstubsurfswantacotasktaxitenttiedtimetinytoiltombtoystriptunatwinuglyundouniturgeuservastveryvetovialvibeviewvisavoidvowswallwandwarmwaspwavewaxywebswhatwhenwhizwolfworkyankyawnyellyogayurtzapszerozestzinczonezoom';
+let BW_LOOKUP = null;
+function bwGetWord(index) { return BYTEWORDS.slice(index * 4, index * 4 + 4); }
+function bwBuildLookup() {
+  BW_LOOKUP = new Int16Array(26 * 26).fill(-1);
+  for (let i = 0; i < 256; i++) {
+    const w = bwGetWord(i);
+    const x = w.charCodeAt(0) - 97;
+    const y = w.charCodeAt(3) - 97;
+    BW_LOOKUP[y * 26 + x] = i;
+  }
+}
+// encode raw bytes -> minimal bytewords (2 chars/byte), appending a CRC-32 of the body
+function bytewordsEncode(bodyBytes) {
+  const crc = intToBytes(crc32(bodyBytes));
+  const full = concatBytes([bodyBytes, crc]);
+  let s = '';
+  for (let i = 0; i < full.length; i++) {
+    const w = bwGetWord(full[i]);
+    s += w[0] + w[3];
+  }
+  return s;
+}
+// decode minimal bytewords -> raw bytes (verifies + strips the CRC-32 checksum)
+function bytewordsDecode(str) {
+  if (!BW_LOOKUP) bwBuildLookup();
+  if (str.length % 2 !== 0) throw new Error('bytewords: odd length');
+  const n = str.length / 2;
+  const decoded = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = str.charCodeAt(i * 2) - 97;
+    const y = str.charCodeAt(i * 2 + 1) - 97;
+    if (x < 0 || x >= 26 || y < 0 || y >= 26) throw new Error('bytewords: invalid letters');
+    const v = BW_LOOKUP[y * 26 + x];
+    if (v === -1) throw new Error('bytewords: word not in table');
+    decoded[i] = v;
+  }
+  if (decoded.length < 5) throw new Error('bytewords: too short');
+  const body = decoded.slice(0, -4);
+  const bodyChecksum = decoded.slice(-4);
+  const computed = intToBytes(crc32(body));
+  if (!bytesEqual(computed, bodyChecksum)) throw new Error('bytewords: bad checksum');
+  return body;
+}
+
+// ---------- Minimal CBOR ----------
+// Encode an unsigned int with the given major type (0 = uint, 2 = bytes, 3 = text).
+function cborHead(major, value) {
+  const mt = major << 5;
+  if (value < 24) return new Uint8Array([mt | value]);
+  if (value < 0x100) return new Uint8Array([mt | 24, value]);
+  if (value < 0x10000) return new Uint8Array([mt | 25, value >> 8, value & 0xff]);
+  return new Uint8Array([mt | 26, (value>>>24)&0xff, (value>>>16)&0xff, (value>>>8)&0xff, value&0xff]);
+}
+function cborUint(v) { return cborHead(0, v); }
+function cborBytes(u8) { return concatBytes([cborHead(2, u8.length), u8]); }
+function cborText(str) {
+  const u8 = new TextEncoder().encode(str);
+  return concatBytes([cborHead(3, u8.length), u8]);
+}
+// Encode the fountain part array [seqNum, seqLen, msgLen, checksum, fragment(bytes)]
+function cborEncodePart(seqNum, seqLen, msgLen, checksum, fragment) {
+  return concatBytes([
+    new Uint8Array([0x85]), // array(5)
+    cborUint(seqNum), cborUint(seqLen), cborUint(msgLen), cborUint(checksum),
+    cborBytes(fragment),
+  ]);
+}
+// Minimal CBOR reader. Returns {value, next}. Handles uint, bytes, text, array; tags -> {tag}.
+function cborRead(bytes, pos) {
+  const ib = bytes[pos];
+  const major = ib >> 5;
+  const info = ib & 0x1f;
+  let p = pos + 1;
+  let len;
+  if (info < 24) len = info;
+  else if (info === 24) { len = bytes[p]; p += 1; }
+  else if (info === 25) { len = (bytes[p] << 8) | bytes[p+1]; p += 2; }
+  else if (info === 26) { len = ((bytes[p]<<24)|(bytes[p+1]<<16)|(bytes[p+2]<<8)|bytes[p+3]) >>> 0; p += 4; }
+  else throw new Error('cbor: unsupported length encoding ' + info);
+  if (major === 0) return { value: len, next: p };
+  if (major === 2) { const v = bytes.slice(p, p + len); return { value: v, next: p + len }; }
+  if (major === 3) { const v = new TextDecoder().decode(bytes.slice(p, p + len)); return { value: v, next: p + len, isText: true }; }
+  if (major === 4) {
+    const arr = [];
+    for (let i = 0; i < len; i++) { const r = cborRead(bytes, p); arr.push(r.value); p = r.next; }
+    return { value: arr, next: p, isArray: true };
+  }
+  if (major === 5) { // map -> Map
+    const m = new Map();
+    for (let i = 0; i < len; i++) { const k = cborRead(bytes, p); const v = cborRead(bytes, k.next); m.set(k.value, v.value); p = v.next; }
+    return { value: m, next: p, isMap: true };
+  }
+  if (major === 6) { // tag -> { tag, val } (content decoded)
+    const inner = cborRead(bytes, p);
+    return { value: { tag: len, val: inner.value }, next: inner.next, isTag: true };
+  }
+  if (major === 7) { // simple: 20=false 21=true 22=null 23=undefined
+    if (info === 20) return { value: false, next: p };
+    if (info === 21) return { value: true, next: p };
+    if (info === 22) return { value: null, next: p };
+    if (info === 23) return { value: undefined, next: p };
+    throw new Error('cbor: unsupported simple value ' + info);
+  }
+  throw new Error('cbor: unsupported major type ' + major);
+}
+function cborDecodePart(bytes) {
+  const r = cborRead(bytes, 0);
+  if (!r.isArray || r.value.length !== 5) throw new Error('cbor: not a 5-element part array');
+  const [seqNum, seqLen, msgLen, checksum, fragment] = r.value;
+  if (!(fragment instanceof Uint8Array)) throw new Error('cbor: fragment not bytes');
+  return { seqNum, seqLen, msgLen, checksum, fragment };
+}
+
+// ---------- xoshiro256** PRNG (seeded by sha256) ----------
+const MASK64 = (1n << 64n) - 1n;
+function rotl64(x, k) { return ((x << BigInt(k)) | (x >> BigInt(64 - k))) & MASK64; }
+class Xoshiro {
+  constructor(seed) {
+    const d = sha256(seed);
+    this.s = [0n, 0n, 0n, 0n];
+    for (let i = 0; i < 4; i++) {
+      let v = 0n;
+      for (let n = 0; n < 8; n++) v = ((v << 8n) | BigInt(d[i*8+n])) & MASK64;
+      this.s[i] = v;
+    }
+  }
+  roll() {
+    const s = this.s;
+    const result = (rotl64((s[1] * 5n) & MASK64, 7) * 9n) & MASK64;
+    const t = (s[1] << 17n) & MASK64;
+    s[2] ^= s[0]; s[3] ^= s[1]; s[1] ^= s[2]; s[0] ^= s[3];
+    s[2] ^= t; s[3] = rotl64(s[3], 45);
+    return result;
+  }
+  // Number(roll)/2^64 reproduces bc-ur's BigNumber(roll).div(2^64) coerced to float
+  // exactly, because scaling by a power of two is lossless in IEEE-754.
+  nextDouble() { return Number(this.roll()) / 18446744073709551616; }
+  nextInt(low, high) { return Math.floor(this.nextDouble() * (high - low + 1) + low); }
+}
+
+// ---------- alias sampling (chooseDegree) ----------
+function precomputeAlias(p, n) {
+  const sum = p.reduce((a, v) => a + v, 0);
+  const scaled = p.map(x => (x * n) / sum);
+  const prob = new Array(n), alias = new Array(n);
+  const small = [], large = [];
+  for (let i = n - 1; i >= 0; i--) (scaled[i] < 1 ? small : large).push(i);
+  while (small.length && large.length) {
+    const less = small.pop(), more = large.pop();
+    prob[less] = scaled[less]; alias[less] = more;
+    scaled[more] = (scaled[more] + scaled[less]) - 1;
+    (scaled[more] < 1 ? small : large).push(more);
+  }
+  while (large.length) prob[large.pop()] = 1;
+  while (small.length) prob[small.pop()] = 1;
+  return { prob, alias };
+}
+function aliasDraw(aliasData, rng) {
+  const c = Math.floor(rng() * aliasData.prob.length);
+  return (rng() < aliasData.prob[c]) ? c : aliasData.alias[c];
+}
+function chooseDegree(seqLength, rng) {
+  const probs = [];
+  for (let i = 0; i < seqLength; i++) probs.push(1 / (i + 1));
+  const aliasData = precomputeAlias(probs, seqLength);
+  return aliasDraw(aliasData, () => rng.nextDouble()) + 1;
+}
+function shuffle(items, rng) {
+  const remaining = items.slice();
+  const result = [];
+  while (remaining.length > 0) {
+    const index = rng.nextInt(0, remaining.length - 1);
+    result.push(remaining[index]);
+    remaining.splice(index, 1);
+  }
+  return result;
+}
+function chooseFragments(seqNum, seqLength, checksum) {
+  if (seqNum <= seqLength) return [seqNum - 1];
+  const seed = concatBytes([intToBytes(seqNum), intToBytes(checksum)]);
+  const rng = new Xoshiro(seed);
+  const degree = chooseDegree(seqLength, rng);
+  const indexes = [];
+  for (let i = 0; i < seqLength; i++) indexes.push(i);
+  return shuffle(indexes, rng).slice(0, degree);
+}
+
+// ---------- set helpers for fountain reduction ----------
+function arrayContains(outer, inner) { return inner.every(v => outer.includes(v)); }
+function arraysEqualUnordered(a, b) { return a.length === b.length && a.every(x => b.includes(x)); }
+function setDifference(a, b) { return a.filter(x => b.indexOf(x) < 0); }
+function xorInto(a, b) {
+  const len = Math.max(a.length, b.length);
+  const out = new Uint8Array(len);
+  for (let i = 0; i < len; i++) out[i] = (a[i] || 0) ^ (b[i] || 0);
+  return out;
+}
+
+// ---------- Fountain decoder (port of bc-ur FountainDecoder) ----------
+class FountainDecoder {
+  constructor() {
+    this.result = undefined; this.error = undefined;
+    this.expectedMessageLength = 0; this.expectedChecksum = 0; this.expectedFragmentLength = 0;
+    this.processedPartsCount = 0;
+    this.expectedPartIndexes = []; this.queuedParts = [];
+    this.receivedPartIndexes = []; this.mixedParts = []; this.simpleParts = [];
+  }
+  validatePart(part) {
+    if (this.expectedPartIndexes.length === 0) {
+      for (let i = 0; i < part.seqLen; i++) this.expectedPartIndexes.push(i);
+      this.expectedMessageLength = part.msgLen;
+      this.expectedChecksum = part.checksum;
+      this.expectedFragmentLength = part.fragment.length;
+    } else {
+      if (this.expectedPartIndexes.length !== part.seqLen) return false;
+      if (this.expectedMessageLength !== part.msgLen) return false;
+      if (this.expectedChecksum !== part.checksum) return false;
+      if (this.expectedFragmentLength !== part.fragment.length) return false;
+    }
+    return true;
+  }
+  reducePartByPart(a, b) {
+    if (arrayContains(a.indexes, b.indexes)) {
+      return { indexes: setDifference(a.indexes, b.indexes), fragment: xorInto(a.fragment, b.fragment) };
+    }
+    return a;
+  }
+  reduceMixedBy(part) {
+    const newMixed = [];
+    for (const { value: mixedPart } of this.mixedParts) {
+      const reduced = this.reducePartByPart(mixedPart, part);
+      if (reduced.indexes.length === 1) this.queuedParts.push(reduced);
+      else newMixed.push({ key: reduced.indexes, value: reduced });
+    }
+    this.mixedParts = newMixed;
+  }
+  processSimplePart(part) {
+    const fragmentIndex = part.indexes[0];
+    if (this.receivedPartIndexes.includes(fragmentIndex)) return;
+    this.simpleParts.push({ key: part.indexes, value: part });
+    this.receivedPartIndexes.push(fragmentIndex);
+    if (arraysEqualUnordered(this.receivedPartIndexes, this.expectedPartIndexes)) {
+      const sorted = this.simpleParts.map(p => p.value).sort((a, b) => a.indexes[0] - b.indexes[0]);
+      const message = concatBytes(sorted.map(p => p.fragment)).slice(0, this.expectedMessageLength);
+      if (crc32(message) === this.expectedChecksum) this.result = message;
+      else this.error = new Error('invalid checksum');
+    } else {
+      this.reduceMixedBy(part);
+    }
+  }
+  processMixedPart(part) {
+    if (this.mixedParts.some(({ key }) => arraysEqualUnordered(key, part.indexes))) return;
+    let p2 = part;
+    for (const { value: p } of this.simpleParts) p2 = this.reducePartByPart(p2, p);
+    for (const { value: p } of this.mixedParts) p2 = this.reducePartByPart(p2, p);
+    if (p2.indexes.length === 1) this.queuedParts.push(p2);
+    else { this.reduceMixedBy(p2); this.mixedParts.push({ key: p2.indexes, value: p2 }); }
+  }
+  processQueuedItem() {
+    const part = this.queuedParts.shift();
+    if (part.indexes.length === 1) this.processSimplePart(part);
+    else this.processMixedPart(part);
+  }
+  receivePart(part) {
+    if (this.isComplete()) return false;
+    if (!this.validatePart(part)) return false;
+    const indexes = chooseFragments(part.seqNum, part.seqLen, part.checksum);
+    this.queuedParts.push({ indexes, fragment: part.fragment });
+    while (!this.isComplete() && this.queuedParts.length > 0) this.processQueuedItem();
+    this.processedPartsCount += 1;
+    return true;
+  }
+  isComplete() { return this.result !== undefined && this.result.length > 0; }
+  isSuccess() { return this.error === undefined && this.isComplete(); }
+  expectedPartCount() { return this.expectedPartIndexes.length; }
+  getProgress() {
+    const e = this.expectedPartCount();
+    return this.isComplete() ? 1 : (e === 0 ? 0 : this.receivedPartIndexes.length / e);
+  }
+}
+
+// ---------- UR decoder (parse ur: frames, feed the fountain decoder) ----------
+class URDecoder {
+  constructor() { this.fountain = new FountainDecoder(); this.type = null; this.result = undefined; this.error = undefined; }
+  static parse(message) {
+    const lower = message.toLowerCase();
+    if (lower.slice(0, 3) !== 'ur:') throw new Error('not a ur: string');
+    const components = lower.slice(3).split('/');
+    const type = components[0];
+    if (components.length < 2) throw new Error('ur: missing body');
+    return [type, components.slice(1)];
+  }
+  receivePart(s) {
+    if (this.result !== undefined) return false;
+    const [type, components] = URDecoder.parse(s);
+    if (this.type === null) this.type = type;
+    else if (this.type !== type) return false;
+    if (components.length === 1) {
+      // single-part UR: body is the whole CBOR payload
+      this.result = { type, payload: bytewordsDecode(components[0]) };
+      return true;
+    }
+    const seq = components[0].split('-');
+    const seqNum = Number(seq[0]) >>> 0;
+    const seqLen = Number(seq[1]);
+    if (seqNum < 1 || seqLen < 1) return false;
+    const partBytes = bytewordsDecode(components[1]);
+    const part = cborDecodePart(partBytes);
+    if (seqNum !== part.seqNum || seqLen !== part.seqLen) return false;
+    if (!this.fountain.receivePart(part)) return false;
+    if (this.fountain.isSuccess()) this.result = { type, payload: this.fountain.result };
+    else if (this.fountain.error) this.error = this.fountain.error;
+    return true;
+  }
+  isComplete() { return this.result !== undefined; }
+  isSuccess() { return this.error === undefined && this.isComplete(); }
+  getProgress() { return this.fountain.getProgress(); }
+  expectedPartCount() { return this.fountain.expectedPartCount(); }
+  // The reassembled CBOR payload (the UR's `cbor`), as raw bytes.
+  resultRawCBOR() { return this.result ? this.result.payload : new Uint8Array(0); }
+}
+
+// ---------- Fountain encoder (port of bc-ur FountainEncoder) ----------
+function findNominalFragmentLength(messageLength, minLen, maxLen) {
+  const maxCount = Math.ceil(messageLength / minLen);
+  let fragmentLength = 0;
+  for (let count = 1; count <= maxCount; count++) {
+    fragmentLength = Math.ceil(messageLength / count);
+    if (fragmentLength <= maxLen) break;
+  }
+  return fragmentLength;
+}
+function partitionMessage(message, fragmentLength) {
+  const fragments = [];
+  for (let i = 0; i < message.length; i += fragmentLength) {
+    const frag = new Uint8Array(fragmentLength);
+    frag.set(message.slice(i, i + fragmentLength));
+    fragments.push(frag);
+  }
+  return fragments;
+}
+class FountainEncoder {
+  constructor(message, maxFragmentLength = 100, firstSeqNum = 0, minFragmentLength = 10) {
+    const fragmentLength = findNominalFragmentLength(message.length, minFragmentLength, maxFragmentLength);
+    this.messageLength = message.length;
+    this.fragments = partitionMessage(message, fragmentLength);
+    this.fragmentLength = fragmentLength;
+    this.seqNum = firstSeqNum >>> 0;
+    this.checksum = crc32(message);
+  }
+  get fragmentsLength() { return this.fragments.length; }
+  isSinglePart() { return this.fragments.length === 1; }
+  mix(indexes) {
+    let result = new Uint8Array(this.fragmentLength);
+    for (const index of indexes) result = xorInto(this.fragments[index], result);
+    return result;
+  }
+  nextPart() {
+    this.seqNum = (this.seqNum + 1) >>> 0;
+    const indexes = chooseFragments(this.seqNum, this.fragments.length, this.checksum);
+    const mixed = this.mix(indexes);
+    return { seqNum: this.seqNum, seqLen: this.fragments.length, messageLength: this.messageLength, checksum: this.checksum, fragment: mixed };
+  }
+}
+class UREncoder {
+  constructor(type, cborPayload, maxFragmentLength = 100, firstSeqNum = 0, minFragmentLength = 10) {
+    this.type = type;
+    this.cbor = cborPayload;
+    this.fountain = new FountainEncoder(cborPayload, maxFragmentLength, firstSeqNum, minFragmentLength);
+  }
+  get fragmentsLength() { return this.fountain.fragmentsLength; }
+  nextPart() {
+    const part = this.fountain.nextPart();
+    if (this.fountain.isSinglePart()) {
+      return 'ur:' + this.type + '/' + bytewordsEncode(this.cbor);
+    }
+    const seq = part.seqNum + '-' + part.seqLen;
+    const partCbor = cborEncodePart(part.seqNum, part.seqLen, part.messageLength, part.checksum, part.fragment);
+    return 'ur:' + this.type + '/' + seq + '/' + bytewordsEncode(partCbor);
+  }
+}
+
+// ---------- crypto-output / crypto-account -> BIP-380 output descriptor ----------
+// Reconstructs the standard descriptor string (with [key-origin] and #checksum) that
+// coordinators like Sparrow import, from the tagged-CBOR tree that Nunchuk/Keystone emit.
+// Verified against @keystonehq/bc-ur-registry (structure) and embit (checksum/parse).
+const _B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+function base58encode(bytes) {
+  let zeros = 0; while (zeros < bytes.length && bytes[zeros] === 0) zeros++;
+  const digits = [0];
+  for (let i = zeros; i < bytes.length; i++) {
+    let carry = bytes[i];
+    for (let j = 0; j < digits.length; j++) { carry += digits[j] << 8; digits[j] = carry % 58; carry = (carry / 58) | 0; }
+    while (carry) { digits.push(carry % 58); carry = (carry / 58) | 0; }
+  }
+  let s = '1'.repeat(zeros);
+  for (let i = digits.length - 1; i >= 0; i--) s += _B58[digits[i]];
+  return s;
+}
+function base58check(payload) {
+  const chk = sha256(sha256(payload)).slice(0, 4);
+  return base58encode(concatBytes([payload, chk]));
+}
+// BIP-380 descriptor checksum (64-bit polymod — BigInt is required).
+const _CHK_CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+const _CHK_INPUT = "0123456789()[],'/*abcdefgh@:$%{}IJKLMNOPQRSTUVWXYZ&+-.;<=>?!^_|~ijklmnopqrstuvwxyzABCDEFGH`#\"\\ ";
+function descriptorChecksum(desc) {
+  const M = (1n << 40n) - 1n;
+  const poly = (c, val) => {
+    const c0 = c >> 35n;
+    c = (((c & 0x7ffffffffn) << 5n) ^ BigInt(val)) & M;
+    if (c0 & 1n) c ^= 0xf5dee51989n;
+    if (c0 & 2n) c ^= 0xa9fdca3312n;
+    if (c0 & 4n) c ^= 0x1bab10e32dn;
+    if (c0 & 8n) c ^= 0x3706b1677an;
+    if (c0 & 16n) c ^= 0x644d626ffdn;
+    return c & M;
+  };
+  let c = 1n, cls = 0, clscount = 0;
+  for (const ch of desc) {
+    const pos = _CHK_INPUT.indexOf(ch);
+    if (pos < 0) return null;
+    c = poly(c, pos & 31);
+    cls = cls * 3 + (pos >> 5);
+    if (++clscount === 3) { c = poly(c, cls); cls = 0; clscount = 0; }
+  }
+  if (clscount > 0) c = poly(c, cls);
+  for (let j = 0; j < 8; j++) c = poly(c, 0);
+  c ^= 1n;
+  let ret = '';
+  for (let j = 0; j < 8; j++) ret += _CHK_CHARSET[Number((c >> (5n * BigInt(7 - j))) & 31n)];
+  return ret;
+}
+const _SCRIPT_TAGS = { 400:'sh',401:'wsh',402:'pk',403:'pkh',404:'wpkh',405:'combo',406:'multi',407:'sortedmulti',408:'raw',409:'tapscript',410:'cosigner' };
+const _isTag = x => x && typeof x === 'object' && !(x instanceof Map) && !Array.isArray(x) && 'tag' in x;
+function _fpHex(u) { return (u >>> 0).toString(16).padStart(8, '0'); }
+function _keypathToString(kpMap) {
+  const comps = kpMap.get(1) || [];
+  const parts = [];
+  for (let i = 0; i < comps.length; i += 2) {
+    const idx = comps[i], hard = comps[i + 1];
+    if (idx === undefined || Array.isArray(idx)) parts.push('*' + (hard ? "'" : ''));
+    else parts.push(idx + (hard ? "'" : ''));
+  }
+  return parts.join('/');
+}
+function _hdkeyToFragment(m) {
+  const key = m.get(3), chainCode = m.get(4), useInfo = m.get(5);
+  const originT = m.get(6), childrenT = m.get(7), parentFp = m.get(8);
+  const origin = originT && originT.val, children = childrenT && childrenT.val;
+  let version = hexToBytes('0488b21e'); // xpub (mainnet)
+  if (useInfo && useInfo.val && useInfo.val.get && useInfo.val.get(2) === 1) version = hexToBytes('043587cf'); // tpub
+  const comps = origin ? (origin.get(1) || []) : [];
+  const depth = comps.length / 2;
+  let childNumber = 0;
+  if (depth > 0) {
+    const lastIdx = comps[comps.length - 2], lastHard = comps[comps.length - 1];
+    childNumber = (((lastIdx >>> 0) | (lastHard ? 0x80000000 : 0)) >>> 0);
+  }
+  const pfp = parentFp !== undefined ? hexToBytes(_fpHex(parentFp)) : new Uint8Array(4);
+  const cnum = new Uint8Array(4); new DataView(cnum.buffer).setUint32(0, childNumber >>> 0, false);
+  const xpub = base58check(concatBytes([version, new Uint8Array([depth & 0xff]), pfp, cnum, chainCode, key]));
+  let originStr = '';
+  if (origin) {
+    const srcFp = origin.get(2), path = _keypathToString(origin);
+    originStr = '[' + (srcFp !== undefined ? _fpHex(srcFp) : '00000000') + (path ? '/' + path : '') + ']';
+  }
+  let frag = originStr + xpub;
+  if (children) { const cp = _keypathToString(children); if (cp) frag += '/' + cp; }
+  return frag;
+}
+function _outputBody(topNode) {
+  const scripts = [];
+  let node = topNode;
+  while (_isTag(node) && _SCRIPT_TAGS[node.tag]) { scripts.push(_SCRIPT_TAGS[node.tag]); node = node.val; }
+  let body;
+  if (node instanceof Map && node.has(1) && Array.isArray(node.get(2))) {
+    const threshold = node.get(1);
+    const frags = node.get(2).map(k => _hdkeyToFragment(_isTag(k) ? k.val : k));
+    body = threshold + ',' + frags.join(',');
+  } else if (_isTag(node)) body = _hdkeyToFragment(node.val);
+  else if (node instanceof Map) body = _hdkeyToFragment(node);
+  else throw new Error('unrecognized crypto-output body');
+  return { body, scripts };
+}
+function _assemble(body, scripts) {
+  let desc = body;
+  for (let i = scripts.length - 1; i >= 0; i--) desc = scripts[i] + '(' + desc + ')';
+  const chk = descriptorChecksum(desc);
+  return desc + (chk ? '#' + chk : '');
+}
+function decodeCryptoOutput(rawCbor) {
+  const { body, scripts } = _outputBody(cborRead(rawCbor, 0).value);
+  return _assemble(body, scripts);
+}
+function decodeCryptoAccount(rawCbor) {
+  const m = cborRead(rawCbor, 0).value;              // Map {1: masterFp, 2: [outputs]}
+  const outputs = m.get(2) || [];
+  return outputs.map(o => { const { body, scripts } = _outputBody(o); return _assemble(body, scripts); });
+}
+
+// Heuristic: are these bytes printable UTF-8 text (not a binary blob)? Used to tell a
+// text payload wrapped in ur:bytes (e.g. a BlueWallet/Coldcard multisig setup file, a
+// descriptor, a BSMS file) from a genuinely binary one (a raw transaction). Strict: valid
+// UTF-8 with no control chars other than tab/newline/CR. A raw tx (NUL version bytes) or a
+// PSBT (0xFF magic byte, invalid UTF-8) fails this and stays binary.
+function looksLikeText(bytes) {
+  if (!bytes || bytes.length === 0) return false;
+  let s;
+  try { s = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+  catch (e) { return false; }
+  for (const ch of s) {
+    const c = ch.codePointAt(0);
+    if (c === 9 || c === 10 || c === 13) continue;
+    if (c < 32 || c === 0x7f) return false;
+  }
+  return true;
+}
+
+// ---------- Payload helpers (what Keylay hands to the UI / save layer) ----------
+// Given a UR type and its raw CBOR payload, extract the useful value.
+//   crypto-psbt / psbt                   -> { kind:'binary', bytes }  (always a PSBT)
+//   bytes                                -> binary (raw tx) OR text (setup file/descriptor),
+//                                           decided by sniffing the decoded bytes
+//   output-descriptor / crypto-output    -> { kind:'text', text }     (descriptor string)
+//   crypto-account                       -> { kind:'text', text }     (one descriptor per line)
+//   anything else / decode failure       -> { kind:'other' }          (raw-display fallback)
+function extractPayload(type, rawCbor) {
+  const t = type.toLowerCase();
+  let head;
+  try { head = cborRead(rawCbor, 0); } catch (e) { return { kind: 'other', reason: 'cbor read failed' }; }
+  if (t === 'crypto-psbt' || t === 'psbt') {
+    if (head.value instanceof Uint8Array) return { kind: 'binary', bytes: head.value };
+    return { kind: 'other', reason: 'expected byte string' };
+  }
+  if (t === 'bytes') {
+    if (!(head.value instanceof Uint8Array)) return { kind: 'other', reason: 'expected byte string' };
+    const b = head.value;
+    // PSBT magic (70 73 62 74 FF) -> binary PSBT even inside ur:bytes.
+    if (b.length >= 5 && b[0] === 0x70 && b[1] === 0x73 && b[2] === 0x62 && b[3] === 0x74 && b[4] === 0xff) {
+      return { kind: 'binary', bytes: b };
+    }
+    // Text wrapped in ur:bytes (BlueWallet/Coldcard multisig setup, descriptor, BSMS).
+    if (looksLikeText(b)) return { kind: 'text', text: new TextDecoder().decode(b) };
+    // Otherwise a genuine binary blob (raw transaction).
+    return { kind: 'binary', bytes: b };
+  }
+  if (t === 'output-descriptor') {
+    if (head.isText) return { kind: 'text', text: head.value };
+    // Some emitters wrap the descriptor in a map/tag; try the crypto-output tree decoder.
+    try { return { kind: 'text', text: decodeCryptoOutput(rawCbor) }; } catch (e) {}
+    return { kind: 'other', reason: 'descriptor not a plain text string' };
+  }
+  if (t === 'crypto-output') {
+    try { return { kind: 'text', text: decodeCryptoOutput(rawCbor) }; }
+    catch (e) { return { kind: 'other', reason: 'crypto-output decode failed: ' + e.message }; }
+  }
+  if (t === 'crypto-account' || t === 'account-descriptor') {
+    try {
+      const descs = decodeCryptoAccount(rawCbor);
+      if (descs.length) return { kind: 'text', text: descs.join('\n') };
+    } catch (e) {}
+    return { kind: 'other', reason: 'crypto-account decode failed' };
+  }
+  // crypto-hdkey, crypto-seed, etc. — no native decoder yet.
+  return { kind: 'other', reason: 'no native decoder for ' + type };
+}
+
+
+    return {
+      URDecoder, UREncoder, FountainDecoder, FountainEncoder,
+      extractPayload, decodeCryptoOutput, decodeCryptoAccount, descriptorChecksum,
+      bytewordsEncode, bytewordsDecode, cborBytes, cborText, cborUint, cborEncodePart,
+      cborRead, cborDecodePart, crc32, sha256, chooseFragments, bytesToHex, hexToBytes, concatBytes,
+    };
+  })();
+  </script>
+
+  <script>
+    // *** Keylay v0.9.0 - BINARY FILE RELAY + BBQR ENCODE/DECODE ***
+    console.log("🚀 Keylay v0.9.0 - Binary PSBT relay, BBQR encoder, corrected BBQR decoder");
     
     // ============================================
     // CONSTANTS
@@ -10748,11 +11456,38 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       }
     }
 
-    // Derive channel name: SHA-256(code) → first 32 hex chars (128 bits).
-    // The relay sees only this hash, never the raw code.
-    async function deriveChannelName(code) {
-      const encoded = new TextEncoder().encode(code);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
+    // [v2] Concatenate a domain-separation tag with the stretched key K_code.
+    function v2Input(tag, kCode) {
+      const t = new TextEncoder().encode(tag);
+      const out = new Uint8Array(t.length + kCode.length);
+      out.set(t);
+      out.set(kCode, t.length);
+      return out;
+    }
+
+    // [v2 / S11+S12] Derive the stretched key K_code from the session code.
+    // PBKDF2-HMAC-SHA512, 300k iterations, fixed domain salt. Every value that used
+    // to come from the RAW code (channel id, HMAC key, session-key salt) now hangs
+    // off this single stretched key, so nothing the relay sees lets it recover the
+    // code cheaply. SHA-512 taxes GPU attackers harder than SHA-256 at neutral cost.
+    // Returns 32 raw bytes.
+    async function deriveKCode(code) {
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw', new TextEncoder().encode(code), 'PBKDF2', false, ['deriveBits']
+      );
+      const bits = await crypto.subtle.deriveBits(
+        { name: 'PBKDF2', hash: 'SHA-512', salt: new TextEncoder().encode('keylay-v2-kdf-salt'), iterations: 300000 },
+        keyMaterial, 256
+      );
+      return new Uint8Array(bits);
+    }
+
+    // [v2 / S12] Channel id = SHA-256("keylay-v2-channel|" || K_code) → first 32 hex
+    // chars. Because it hashes the STRETCHED key, inverting it back to the code costs
+    // a full PBKDF2 per guess — the old ~one-day single-GPU attack on SHA-256(raw code)
+    // is gone. The relay still sees only this hash, never the code.
+    async function deriveChannelName(kCode) {
+      const hashBuffer = await crypto.subtle.digest('SHA-256', v2Input('keylay-v2-channel|', kCode));
       return Array.from(new Uint8Array(hashBuffer))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('')
@@ -10776,7 +11511,7 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
 
     // Derive AES-256-GCM session key via X25519 + HKDF.
     // Both peers derive the same key from the DH shared secret — it is never transmitted.
-    async function deriveSessionKey(myKeyPair, myPublicKeyB64, theirPublicKeyB64) {
+    async function deriveSessionKey(myKeyPair, myPublicKeyB64, theirPublicKeyB64, kCode, channelHash) {
       const raw = Uint8Array.from(atob(theirPublicKeyB64), c => c.charCodeAt(0));
       const theirPublicKey = await crypto.subtle.importKey(
         'raw', raw, { name: 'X25519' }, false, []
@@ -10793,12 +11528,15 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
         'raw', sharedBits, 'HKDF', false, ['deriveKey']
       );
 
-      // Sort public keys so both peers compute identical info regardless of join order
+      // Sort public keys so both peers compute identical info regardless of join order.
+      // [v2 / A3] Bind the code (K_code as the HKDF salt) and the channel id (in info)
+      // into the session key: a key transplanted to another session/pair is useless,
+      // and a relay that doesn't know the code cannot derive it.
       const keys = [myPublicKeyB64, theirPublicKeyB64].sort();
-      const info = new TextEncoder().encode('keylay-v1-session|' + keys.join('|'));
+      const info = new TextEncoder().encode('keylay-v2-pair|' + channelHash + '|' + keys.join('|'));
 
       return crypto.subtle.deriveKey(
-        { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info },
+        { name: 'HKDF', hash: 'SHA-256', salt: kCode, info },
         hkdfKey,
         { name: 'AES-GCM', length: 256 },
         false,
@@ -10806,18 +11544,12 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       );
     }
 
-    // Derive an HMAC-SHA256 key from the session code.
-    // Used to authenticate hello public keys — only peers who know the code can sign.
-    async function deriveHmacKey(code) {
-      const keyMaterial = await crypto.subtle.importKey(
-        'raw', new TextEncoder().encode(code), 'PBKDF2', false, ['deriveKey']
-      );
-      return crypto.subtle.deriveKey(
-        { name: 'PBKDF2', hash: 'SHA-256', salt: new TextEncoder().encode('keylay-v1-hmac'), iterations: 300000 },
-        keyMaterial,
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign', 'verify']
+    // [v2] HMAC key for authenticating hello public keys, derived from the stretched
+    // key K_code (domain-separated). Only peers who know the code can sign/verify.
+    async function deriveHmacKey(kCode) {
+      const macBits = await crypto.subtle.digest('SHA-256', v2Input('keylay-v2-hmac|', kCode));
+      return crypto.subtle.importKey(
+        'raw', macBits, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']
       );
     }
 
@@ -10835,10 +11567,18 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       }
     }
 
-    // Encrypt plaintext with AES-256-GCM. Counter is included in AAD to prevent replay.
-    async function encrypt(plaintext, key, counter) {
+    // [v2 / S3] Build the GCM associated data. Binds the protocol version, message
+    // type, channel id, and format alongside the counter, so a relay that flips any
+    // of them (e.g. format qr->binary) makes decryption fail instead of the client
+    // running the relay-chosen branch. Both peers pass their OWN local channelHash,
+    // so a tampered on-wire channel field cannot weaken it.
+    function buildAAD(type, channelHash, format, counter) {
+      return new TextEncoder().encode('keylay-v2|' + type + '|' + channelHash + '|' + format + '|' + counter);
+    }
+
+    // Encrypt plaintext with AES-256-GCM. `aad` comes from buildAAD().
+    async function encrypt(plaintext, key, aad) {
       const iv = crypto.getRandomValues(new Uint8Array(GCM_IV_LENGTH));
-      const aad = new TextEncoder().encode('keylay-v1|' + counter);
 
       const ciphertext = await crypto.subtle.encrypt(
         { name: 'AES-GCM', iv, additionalData: aad },
@@ -10852,13 +11592,13 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       return bytesToBase64(combined);
     }
 
-    // Decrypt ciphertext with AES-256-GCM. Counter must match what was used during encryption.
-    async function decrypt(encryptedBase64, key, counter) {
+    // Decrypt ciphertext with AES-256-GCM. `aad` must match what the sender bound
+    // (see buildAAD); any relay tampering with the bound header fields fails here.
+    async function decrypt(encryptedBase64, key, aad) {
       try {
         const combined = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
         const iv = combined.slice(0, GCM_IV_LENGTH);
         const ciphertext = combined.slice(GCM_IV_LENGTH);
-        const aad = new TextEncoder().encode('keylay-v1|' + counter);
 
         const decrypted = await crypto.subtle.decrypt(
           { name: 'AES-GCM', iv, additionalData: aad },
@@ -10968,8 +11708,33 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
     }
 
     // Zlib decompress using pako — raw DEFLATE, symmetric with zlibCompress.
+    // [S4] Output-bounded: a crafted BBQr 'Z' frame can inflate ~1000x, so a small
+    // relayed payload could expand into gigabytes and crash the tab. PSBTs are small,
+    // so we stream the inflate and abort once output passes a generous ceiling —
+    // discarding chunks past the cap keeps peak memory bounded instead of buffering
+    // the whole bomb.
     function zlibDecompress(compressedBytes) {
-      return pako.inflateRaw(compressedBytes);
+      const MAX_INFLATE_BYTES = 8 * 1024 * 1024; // 8 MB — far above any real PSBT
+      const inflator = new pako.Inflate({ raw: true });
+      let total = 0;
+      let overflow = false;
+      const chunks = [];
+      inflator.onData = (chunk) => {
+        total += chunk.length;
+        if (total > MAX_INFLATE_BYTES) { overflow = true; return; }
+        chunks.push(chunk);
+      };
+      inflator.push(compressedBytes, true);
+      if (overflow) {
+        throw new Error('Decompressed payload exceeds ' + MAX_INFLATE_BYTES + ' bytes — refusing (possible decompression bomb).');
+      }
+      if (inflator.err) {
+        throw new Error('Decompression failed: ' + (inflator.msg || ('pako error ' + inflator.err)));
+      }
+      const out = new Uint8Array(total);
+      let off = 0;
+      for (const c of chunks) { out.set(c, off); off += c.length; }
+      return out;
     }
 
     // Zlib compress using pako — raw DEFLATE with 1KB window (no RFC 1950 header).
@@ -11044,38 +11809,65 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
     // ============================================
     
     // Detect UR type from data
+    // Classify plain-text / non-UR content by what it IS (content), not how it
+    // arrived (medium). Keeps the internal `type` stable ('qr') so save-routing is
+    // unchanged; only the human-facing label is content-accurate.
+    function classifyPlainContent(data) {
+      if (typeof data !== 'string') return null;
+      const t = data.trim();
+      if (/^#?\s*BSMS/i.test(t)) return { type: 'qr', label: 'BSMS Wallet Setup', extension: '.bsms' };
+      // Coldcard-style multisig setup file (BlueWallet, Coldcard, Nunchuk, Sparrow export):
+      // header comment and/or the Name:/Policy:/Derivation:/Format: field block.
+      if (/^#\s*(BlueWallet|Coldcard|Nunchuk|Sparrow)/i.test(t) ||
+          (/(^|\n)\s*Policy:\s*\d+\s+of\s+\d+/i.test(t) && /(^|\n)\s*Derivation:/i.test(t))) {
+        return { type: 'qr', label: 'Multisig Wallet Setup', extension: '.txt' };
+      }
+      if (/^(wsh|wpkh|sh|pkh|tr|combo|sortedmulti|multi|addr|raw)\(/i.test(t)) return { type: 'qr', label: 'Output Descriptor', extension: '.txt' };
+      if (/^cHNidP8/.test(t)) return { type: 'qr', label: 'PSBT (base64)', extension: '.psbt.txt' };
+      if (/^70736274ff/i.test(t)) return { type: 'qr', label: 'PSBT (hex)', extension: '.psbt.txt' };
+      if (/^([xyztuv]pub|[xyztuv]prv)[1-9A-HJ-NP-Za-km-z]{100,}$/.test(t)) return { type: 'qr', label: 'Extended Public Key', extension: '.txt' };
+      if (/^(bc1|tb1|bcrt1)[0-9a-z]{20,90}$/i.test(t) || /^[13mn2][1-9A-HJ-NP-Za-km-z]{24,38}$/.test(t)) return { type: 'qr', label: 'Bitcoin Address', extension: '.txt' };
+      return null;
+    }
+
+    // Identify the CONTENT of a payload for display, filenames, and save-format gating.
+    // Labels always name the content (PSBT, Output Descriptor, …), never the transport
+    // (QR / BBQr / UR); a plain "Text" is used only when the content is unknowable.
     function detectURType(data) {
-      if (!data) return { type: 'unknown', label: 'Unknown' };
-      
+      if (!data) return { type: 'unknown', label: 'Unknown', extension: '.txt' };
+
       const lowerData = data.toLowerCase();
-      
+
       // [TB3] Accept both UR type-name families: the legacy BCR-2020 `crypto-*`
       // names and the current BCR-2023 v3 names (which drop the `crypto-` prefix,
-      // e.g. ur:psbt, ur:output-descriptor). Both map to the same internal type
-      // so downstream labeling, extensions and save-format gating are unchanged.
-      // startsWith on `ur:output` is intentionally NOT used, so it can't shadow
-      // `ur:output-descriptor`; both concrete names are listed explicitly.
+      // e.g. ur:psbt, ur:output-descriptor). Both map to the same internal type.
       if (lowerData.startsWith('ur:crypto-psbt') || lowerData.startsWith('ur:psbt')) {
         return { type: 'crypto-psbt', label: 'PSBT', extension: '.psbt' };
       } else if (lowerData.startsWith('ur:crypto-output') || lowerData.startsWith('ur:output-descriptor')) {
         return { type: 'crypto-output', label: 'Output Descriptor', extension: '.txt' };
       } else if (lowerData.startsWith('ur:crypto-account') || lowerData.startsWith('ur:account-descriptor')) {
-        return { type: 'crypto-account', label: 'Account', extension: '.json' };
+        return { type: 'crypto-account', label: 'Wallet Descriptor', extension: '.txt' };
       } else if (lowerData.startsWith('ur:crypto-hdkey') || lowerData.startsWith('ur:hdkey')) {
-        return { type: 'crypto-hdkey', label: 'HD Key', extension: '.txt' };
+        return { type: 'crypto-hdkey', label: 'Extended Public Key', extension: '.txt' };
       } else if (lowerData.startsWith('ur:crypto-address') || lowerData.startsWith('ur:address')) {
-        return { type: 'crypto-address', label: 'Address', extension: '.txt' };
+        return { type: 'crypto-address', label: 'Bitcoin Address', extension: '.txt' };
       } else if (lowerData.startsWith('ur:crypto-seed') || lowerData.startsWith('ur:seed')) {
         return { type: 'crypto-seed', label: 'Seed', extension: '.txt' };
       } else if (lowerData.startsWith('ur:bytes')) {
-        return { type: 'bytes', label: 'Bytes', extension: '.bin' };
+        return { type: 'bytes', label: 'Transaction', extension: '.txn' };
       } else if (lowerData.startsWith('ur:')) {
-        return { type: 'ur', label: 'UR Data', extension: '.ur.txt' };
+        return { type: 'ur', label: 'Uniform Resource', extension: '.ur.txt' };
       } else if (data.startsWith('B$') || data.startsWith('b$')) {
-        return { type: 'bbqr', label: 'BBQR', extension: '.bbqr.txt' };
-      } else {
-        return { type: 'qr', label: 'QR Code', extension: '.txt' };
+        // BBQr wraps content — peek the file-type byte (pos 3: P/T/J/U) so the label
+        // names the content, not the "BBQr" transport. Internal type stays 'bbqr'.
+        const ft = data[3] ? data[3].toUpperCase() : '';
+        const ftLabel = ft === 'P' ? 'PSBT' : ft === 'T' ? 'Transaction' : ft === 'J' ? 'JSON' : ft === 'U' ? 'Text' : 'Binary';
+        return { type: 'bbqr', label: ftLabel, extension: '.bbqr.txt' };
       }
+      // Non-UR text/binary: classify by content, else a plain "Text".
+      const plain = classifyPlainContent(data);
+      if (plain) return plain;
+      return { type: 'qr', label: 'Text', extension: '.txt' };
     }
     
     // Generate filename based on data type
@@ -11097,19 +11889,59 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
+
+    // [TF5] Decode a complete UR sequence (newline-joined frames, or a single-part
+    // frame) to its native payload using the native codec (window.KeylayUR).
+    // Returns { type, label, extension, kind, bytes?, text? } or null when the
+    // sequence is incomplete or the format has no native decoder (raw-display fallback).
+    //   kind:'binary' -> PSBT / raw tx (bytes)     kind:'text' -> output descriptor
+    //   kind:'other'  -> legacy crypto-output tree, hdkey/account, etc. (fall back to raw UR)
+    let _urDecodeCache = { key: null, val: null };
+    function decodeURText(urText) {
+      if (!urText || typeof urText !== 'string') return null;
+      if (!urText.toLowerCase().startsWith('ur:') || !window.KeylayUR) return null;
+      if (_urDecodeCache.key === urText) return _urDecodeCache.val;
+      let result = null;
+      const frames = urText.split('\n').map(f => f.trim()).filter(f => f.toLowerCase().startsWith('ur:'));
+      if (frames.length > 0) {
+        try {
+          const dec = new KeylayUR.URDecoder();
+          for (const f of frames) { if (dec.isComplete()) break; dec.receivePart(f); }
+          if (dec.isComplete() && dec.isSuccess()) {
+            const urType = dec.result.type; // 'crypto-psbt' | 'psbt' | 'bytes' | 'output-descriptor' ...
+            const ex = KeylayUR.extractPayload(urType, dec.resultRawCBOR());
+            let meta = detectURType('ur:' + urType);
+            let extension = meta.extension;
+            if (ex.kind === 'binary') {
+              extension = (urType === 'bytes') ? '.txn' : '.psbt';
+            } else if (ex.kind === 'text') {
+              // Label a text payload by its actual content, not the UR container: a descriptor
+              // reads "Output Descriptor", a ur:bytes setup file reads "Multisig Wallet Setup",
+              // etc. — never "Transaction" just because it rode in ur:bytes.
+              extension = '.txt';
+              const inner = detectURType(ex.text);
+              meta = { type: inner.type, label: inner.label };
+            }
+            result = Object.assign({ type: meta.type, label: meta.label, extension }, ex);
+          }
+        } catch (e) { if (DEBUG) console.warn('UR decode failed:', e); }
+      }
+      _urDecodeCache = { key: urText, val: result };
+      return result;
+    }
     
     // Save format options by data type
     const FORMAT_OPTIONS = {
       'crypto-output': [
         { id: 'raw-ur', label: 'Raw UR Format', desc: 'Original UR-encoded data (compatible with all UR readers)', enabled: true },
-        { id: 'descriptor-text', label: 'Plain Text Descriptor', desc: 'Decoded descriptor string (universal format)', enabled: false, coming: 'Requires UR decoding (not yet implemented)' },
-        { id: 'bsms', label: 'BSMS File (.bsms)', desc: 'BIP-129 Bitcoin Secure Multisig Setup format', enabled: false, coming: 'Requires UR decoding (not yet implemented)' },
-        { id: 'json', label: 'JSON with Metadata', desc: 'Structured format with wallet name and creation date', enabled: false, coming: 'Requires UR decoding (not yet implemented)' }
+        { id: 'descriptor-text', label: 'Plain Text Descriptor', desc: 'Decoded descriptor string (modern ur:output-descriptor; falls back to raw UR for legacy crypto-output)', enabled: true },
+        { id: 'bsms', label: 'BSMS File (.bsms)', desc: 'BIP-129 setup file — Keylay does not generate BSMS; save a received BSMS verbatim instead', enabled: false, coming: 'Not generated by Keylay' },
+        { id: 'json', label: 'JSON with Metadata', desc: 'Structured format with wallet name and creation date', enabled: false, coming: 'Not yet implemented' }
       ],
       'crypto-psbt': [
         { id: 'raw-ur', label: 'Raw UR Format', desc: 'Original UR-encoded PSBT (compatible with all UR readers)', enabled: true },
-        { id: 'psbt-base64', label: 'Base64 PSBT', desc: 'Standard base64-encoded PSBT format', enabled: false, coming: 'Requires UR decoding (not yet implemented)' },
-        { id: 'psbt-hex', label: 'Hex PSBT', desc: 'Hexadecimal PSBT format', enabled: false, coming: 'Requires UR decoding (not yet implemented)' }
+        { id: 'psbt-binary', label: 'Binary PSBT (.psbt)', desc: 'Decoded binary PSBT — the file a coordinator imports', enabled: true },
+        { id: 'psbt-base64', label: 'Base64 PSBT', desc: 'Standard base64-encoded PSBT (paste into Sparrow)', enabled: true }
       ],
       'crypto-hdkey': [
         { id: 'raw-ur', label: 'Raw UR Format', desc: 'Original UR-encoded HD key', enabled: true },
@@ -11204,6 +12036,35 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
         // Async decode needed — close modal first then decode
         closeSaveModal();
         decodeBBQRAndSave(lastScannedData, timestamp);
+        return;
+      }
+
+      // [TF5] Decoded UR save formats (from a scanned UR sequence).
+      if (selectedSaveFormat === 'psbt-binary' || selectedSaveFormat === 'psbt-base64' || selectedSaveFormat === 'descriptor-text') {
+        const decoded = decodeURText(lastScannedData);
+        if (selectedSaveFormat === 'psbt-binary' && decoded && decoded.kind === 'binary') {
+          saveToFile(decoded.bytes, `keylay-${timestamp}${decoded.extension}`, 'application/octet-stream');
+          closeSaveModal();
+          showScanStatus(`✓ Saved decoded ${decoded.label} (${decoded.bytes.length} bytes)`, true, true);
+          return;
+        }
+        if (selectedSaveFormat === 'psbt-base64' && decoded && decoded.kind === 'binary') {
+          saveToFile(bytesToBase64(decoded.bytes), `keylay-${timestamp}.psbt.base64.txt`, 'text/plain');
+          closeSaveModal();
+          showScanStatus('✓ Saved base64 PSBT', true, true);
+          return;
+        }
+        if (selectedSaveFormat === 'descriptor-text' && decoded && decoded.kind === 'text') {
+          saveToFile(decoded.text, `keylay-${timestamp}.txt`, 'text/plain');
+          closeSaveModal();
+          showScanStatus('✓ Saved decoded descriptor', true, true);
+          return;
+        }
+        // Couldn't decode (incomplete sequence, or legacy crypto-output tree) -> raw UR fallback.
+        filename = `keylay-${dataType.type}-${timestamp}.ur.txt`;
+        saveToFile(lastScannedData, filename, 'text/plain');
+        closeSaveModal();
+        showScanStatus('⚠️ Could not decode this sequence — saved raw UR instead', true, false);
         return;
       }
 
@@ -11305,7 +12166,27 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
         return;
       }
 
-      // Text formats (UR, QR text)
+      // UR sequence: decode to the native payload and save the real format [TF5].
+      if (typeof lastReceivedData === 'string' && lastReceivedData.toLowerCase().startsWith('ur:')) {
+        const decoded = decodeURText(lastReceivedData);
+        if (decoded && decoded.kind === 'binary') {
+          const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+          const filename = `keylay-${ts}${decoded.extension}`;
+          saveToFile(decoded.bytes, filename, 'application/octet-stream');
+          showScanStatus(`✓ Downloaded decoded ${decoded.label} (${decoded.bytes.length} bytes) as ${filename}`, true, true);
+          return;
+        }
+        if (decoded && decoded.kind === 'text') {
+          const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+          const filename = `keylay-${ts}${decoded.extension}`;
+          saveToFile(decoded.text, filename, 'text/plain');
+          showScanStatus(`✓ Downloaded decoded ${decoded.label} as ${filename}`, true, true);
+          return;
+        }
+        // Not decodable natively (incomplete, or a format with no decoder) -> raw UR text.
+      }
+
+      // Text formats (raw UR fallback, QR text)
       const dataType = detectURType(lastReceivedData);
       const filename = generateFilename(dataType, lastReceivedFormat);
       saveToFile(lastReceivedData, filename);
@@ -11363,9 +12244,15 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       lastUploadedFilename = null;
       updateScannedDataUI();
 
-      await sendEncrypted(text, format);
+      // Relay to the peer only if one is connected; otherwise this is a local-only load
+      // (upload the file and show it as a QR for a hardware wallet sitting right here).
       const dataType = detectURType(text);
-      showScanStatus(`✓ Uploaded ${filename} (${dataType.label}) — sent encrypted`, true, false);
+      if (handshakeState === 'ACTIVE') {
+        await sendEncrypted(text, format);
+        showScanStatus(`✓ Uploaded ${filename} (${dataType.label}) — sent encrypted`, true, false);
+      } else {
+        showScanStatus(`✓ Loaded ${filename} (${dataType.label}) — no peer connected, so it was not relayed. Use the buttons below to show it as a QR for a local device.`, true, false);
+      }
     }
 
     // Handle binary PSBT files: relay via base64 JSON envelope and enable local QR display.
@@ -11384,61 +12271,115 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       lastScannedFormat = 'binary';
       updateScannedDataUI();
 
-      await sendEncrypted(envelope, 'binary');
-
-      showScanStatus(`✓ ${filename} (${bytes.length} bytes) uploaded — sent encrypted`, true, false);
+      // Relay only if a peer is connected; otherwise local-only (show as a QR here).
+      if (handshakeState === 'ACTIVE') {
+        await sendEncrypted(envelope, 'binary');
+        showScanStatus(`✓ Sent (encrypted): PSBT · ${filename} (${bytes.length} bytes)`, true, false);
+      } else {
+        showScanStatus(`✓ Loaded PSBT · ${filename} (${bytes.length} bytes) — no peer connected, so it was not relayed. Show it as a QR below for a local device.`, true, false);
+      }
     }
     
-    // Update UI to show scanned/uploaded data info and relevant action buttons.
+    // Update UI to show the relevant send-side action buttons. The content TYPE is no
+    // longer shown as a standalone label next to the buttons — it is reported in the green
+    // "Sent" confirmation instead (see the send toasts). The app relays; it never displays
+    // the payload content, since verification belongs on the signing device.
     function updateScannedDataUI() {
       const saveBtn = document.getElementById('saveScannedBtn');
       const typeSpan = document.getElementById('lastScannedType');
       const showQRBtn = document.getElementById('showAsQRBtn');
+      const showURBtn = document.getElementById('showAsURBtn');
 
+      if (typeSpan) typeSpan.style.display = 'none'; // no standalone type label beside the buttons
       if (!lastScannedData) return;
 
       if (lastScannedFormat === 'binary' && lastUploadedBytes) {
-        // Binary PSBT: show "Show as QR" but not the text save dialog
+        // Binary PSBT: offer both "Show as QR for Coldcard" (BBQr) and "Show as UR"
+        // (Keystone/Passport/Jade/Sparrow); no text save dialog.
         if (showQRBtn) showQRBtn.style.display = 'inline-block';
+        if (showURBtn) showURBtn.style.display = 'inline-block';
         if (saveBtn) saveBtn.style.display = 'none';
-        if (typeSpan) {
-          typeSpan.textContent = `Binary PSBT (${lastUploadedBytes.length} bytes)`;
-          typeSpan.style.display = 'inline-block';
-        }
       } else {
-        if (showQRBtn) showQRBtn.style.display = 'none';
         if (saveBtn) saveBtn.style.display = 'inline-block';
-        const dataType = detectURType(lastScannedData);
-        if (typeSpan) {
-          typeSpan.textContent = dataType.label;
-          typeSpan.style.display = 'inline-block';
-        }
+        // Offer BOTH formats for an uploaded/scanned output descriptor so it can go out as an
+        // animated QR (UR or BBQr) rather than one dense static QR — the receiving wallet
+        // decides which it accepts. [TF2]
+        const isDescriptor = typeof lastScannedData === 'string' &&
+          !lastScannedData.toLowerCase().startsWith('ur:') &&
+          /(^|[^a-z])(wsh|wpkh|sh|pkh|tr|combo|sortedmulti|multi|addr|raw)\(/i.test(lastScannedData);
+        if (showQRBtn) showQRBtn.style.display = isDescriptor ? 'inline-block' : 'none';
+        if (showURBtn) showURBtn.style.display = isDescriptor ? 'inline-block' : 'none';
       }
     }
     
     // Update UI to show received data info
-    // UR types whose save options are not yet decoded — show a note on the Download button
-    const UR_DECODE_PENDING = new Set(['crypto-output', 'crypto-psbt', 'crypto-hdkey', 'crypto-account']);
+    // UR types that have no native decoder yet — download falls back to raw UR text.
+    // (crypto-psbt, output descriptors, and crypto-account/crypto-output now decode natively.)
+    const UR_DECODE_PENDING = new Set(['crypto-hdkey']);
 
     function updateReceivedDataUI() {
       const typeSpan = document.getElementById('receivedDataType');
       const downloadNote = document.getElementById('downloadNote');
+      const decodedView = document.getElementById('decodedView');
+      const decodedText = document.getElementById('decodedText');
+      const copyBase64Btn = document.getElementById('copyBase64Btn');
+      const showReceivedAsURBtn = document.getElementById('showReceivedAsURBtn');
+      const showReceivedAsBBQRBtn = document.getElementById('showReceivedAsBBQRBtn');
+
+      // Reset per refresh.
+      if (decodedView) decodedView.style.display = 'none';
+      if (copyBase64Btn) copyBase64Btn.style.display = 'none';
+      if (showReceivedAsURBtn) showReceivedAsURBtn.style.display = 'none';
+      if (showReceivedAsBBQRBtn) showReceivedAsBBQRBtn.style.display = 'none';
+      if (lastReceivedFormat !== 'binary') lastReceivedBinaryBytes = null;
 
       if (lastReceivedData && typeSpan) {
-        const dataType = detectURType(lastReceivedData);
-        typeSpan.textContent = dataType.label;
-        typeSpan.style.display = 'inline-block';
+        // [TF5] Decode a UR to its native payload, if we can.
+        const decoded = (typeof lastReceivedData === 'string' && lastReceivedData.toLowerCase().startsWith('ur:'))
+          ? decodeURText(lastReceivedData) : null;
 
-        if (downloadNote) {
-          if (UR_DECODE_PENDING.has(dataType.type)) {
-            downloadNote.textContent = 'Downloads as raw UR text — decoded formats coming soon';
+        // Label by CONTENT (the decoded content type), not the UR container — so a text
+        // file wrapped in ur:bytes reads "Multisig Wallet Setup", not "Transaction".
+        // A relayed binary file arrives as a JSON envelope (not ur:); it is always a PSBT.
+        const label = (lastReceivedFormat === 'binary') ? 'PSBT'
+          : (decoded ? decoded.label : detectURType(lastReceivedData).label);
+        typeSpan.textContent = 'Received: ' + label;
+        typeSpan.style.display = 'block';
+
+        // The format-toggle buttons (UR loop / UR fountain / BBQr) are managed by the mode
+        // system (initReceiverModes / setReceiverModeButtons), which runs after the payload
+        // has been auto-displayed. Nothing to do for them here.
+
+        if (decoded && decoded.kind === 'binary') {
+          // Binary signing artifact (PSBT / raw tx): no on-screen rendering — a PSBT
+          // can't be read or verified by eye. Notice + Download + optional Copy-as-base64.
+          if (copyBase64Btn) copyBase64Btn.style.display = 'inline-block';
+          if (downloadNote) {
+            downloadNote.textContent = `Binary ${decoded.label} · ${decoded.bytes.length} bytes — Download the file to import, or Copy as base64 to paste into your coordinator. Verify on your signing device, not in this app.`;
+            downloadNote.style.display = 'block';
+          }
+        } else if (decoded && decoded.kind === 'text') {
+          // Text setup artifact (descriptor / multisig setup): show it for reading / copy.
+          // The single instruction lives in the decoded-view header, directly above the box.
+          if (decodedView && decodedText) {
+            decodedText.value = decoded.text;
+            const hdr = document.getElementById('decodedHeader');
+            if (hdr) hdr.textContent = `Decoded ${decoded.label} — select and copy the parts you need below, or use Download (saves as ${decoded.extension}).`;
+            decodedView.style.display = 'block';
+          }
+          if (downloadNote) downloadNote.style.display = 'none';
+        } else if (downloadNote) {
+          // No native decoder (incomplete, hdkey, etc.) -> raw UR.
+          const t = detectURType(lastReceivedData).type;
+          if (UR_DECODE_PENDING.has(t)) {
+            downloadNote.textContent = 'Downloads as raw UR text — this format has no decoded save option yet.';
             downloadNote.style.display = 'block';
           } else {
             downloadNote.style.display = 'none';
           }
         }
-      } else if (downloadNote) {
-        downloadNote.style.display = 'none';
+      } else {
+        if (downloadNote) downloadNote.style.display = 'none';
       }
     }
 
@@ -11497,6 +12438,7 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
     let myPublicKeyB64 = '';     // This peer's exported public key (base64)
     let peerPublicKeyB64 = '';   // Peer's public key from the completed handshake
     let hmacKey = null;          // HMAC-SHA256 key derived from session code — authenticates hellos
+    let kCode = null;            // [v2] stretched key (PBKDF2-SHA512) — source of channelHash, hmacKey, session-key salt
     let sessionKey = null;       // AES-256-GCM session key (derived from X25519 DH)
     let messageBuffer = [];      // Data messages received before handshake completes
     let helloRetryInterval = null; // Retries sending hello until ACTIVE
@@ -11537,6 +12479,7 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
     let lastScannedFormat = null;
     let lastReceivedData = null;
     let lastReceivedFormat = null;
+    let lastReceivedBinaryBytes = null;   // decoded bytes of a received binary PSBT (for "Show as UR" re-display)
 
     // Binary upload state (for local "Show as QR for Coldcard" without relay)
     let lastUploadedBytes = null;
@@ -11551,7 +12494,8 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       if (handshakeState !== 'ACTIVE') throw new Error('Handshake not complete — wait for peer');
       if (!ws || ws.readyState !== WebSocket.OPEN) throw new Error('Not connected — rejoin the session');
       const counter = sendCounter++;
-      const payload = await encrypt(data, sessionKey, counter);
+      const aad = buildAAD('data', channelHash, format, counter);
+      const payload = await encrypt(data, sessionKey, aad);
       ws.send(JSON.stringify({ type: 'data', code: channelHash, payload, counter, format, encrypted: true }));
       bumpIdleTimer();
     }
@@ -11650,7 +12594,21 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
         return;
       }
 
-      channelCode = code.trim().toLowerCase();
+      // [KL-SPEC-003] Canonicalize the entered code before deriving anything from it.
+      // A code's *content* is its letters and digits; everything else is formatting and is
+      // removed. That covers the spaces and "·" separators the code is displayed grouped
+      // with (see the currentCode render, e.g. "7k4m · 2xqt · b9"), plus any hyphen or dot
+      // a user adds by hand. Without this, the same code displayed grouped and typed plain
+      // derive different channel ids and never connect — no error, just an endless
+      // "connecting" spinner. Stripping every non-alphanumeric (rather than a fixed
+      // separator list) is what lets the grouped display round-trip and tolerates whatever
+      // separator a user improvises; the previous fixed-list version even rejected the "·"
+      // the app itself renders. Non-ASCII look-alike letters (e.g. a Cyrillic "а") are not
+      // [a-z0-9] and so are removed too — a code carrying one simply won't match the
+      // intended code (no connection, no security consequence). Content is intentionally
+      // NOT restricted to the generator's alphabet: user-chosen memorable codes (which may
+      // contain i/l/o) are supported, and looksLowEntropy only warns.
+      channelCode = code.toLowerCase().replace(/[^a-z0-9]/g, '');
 
       if (channelCode.length < CHANNEL_CODE_MIN_LENGTH) {
         alert(`Channel code must be at least ${CHANNEL_CODE_MIN_LENGTH} characters`);
@@ -11675,8 +12633,9 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       // creates a race where an incoming hello fires during the await gap.
       updateConnectionStatus('connecting', 'Deriving keys...');
       try {
-        channelHash = await deriveChannelName(channelCode);
-        hmacKey = await deriveHmacKey(channelCode);
+        kCode = await deriveKCode(channelCode);
+        channelHash = await deriveChannelName(kCode);
+        hmacKey = await deriveHmacKey(kCode);
         ephemeralKeyPair = await generateEphemeralKeyPair();
         myPublicKeyB64 = await exportPublicKey(ephemeralKeyPair);
         handshakeState = 'IDLE';
@@ -11885,6 +12844,7 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       // Wipe all cryptographic state
       sessionKey = null;
       hmacKey = null;
+      kCode = null;
       ephemeralKeyPair = null;
       myPublicKeyB64 = '';
       peerPublicKeyB64 = '';
@@ -11914,11 +12874,9 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
         joinStatus.textContent = 'Share this code with your collaborator to begin secure coordination.';
         joinStatus.style.color = '#666';
       }
-      // Clear any stale status messages and received data
+      // Clear any stale status messages, data state, and type labels
       if (scanStatus) { scanStatus.textContent = ''; scanStatus.style.display = 'none'; }
-      lastReceivedData = null;
-      const showAsQRBtnEl = document.getElementById('showAsQRBtn');
-      if (showAsQRBtnEl) showAsQRBtnEl.style.display = 'none';
+      clearDataUI();
 
       // Stop any ongoing scans/animations
       stopScanning();
@@ -12241,7 +13199,7 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
 
         try {
           await sendEncrypted(dataStr, 'bbqr');
-          showScanStatus(`✓ BBQR sequence sent (encrypted)`, true, false);
+          showScanStatus(`✓ Sent (encrypted): ${detectURType(dataStr).label} — verify on your signing device, not in this app.`, true, false);
         } catch (sendErr) {
           console.error('BBQR send failed:', sendErr);
           showScanStatus(`❌ BBQR captured but send failed: ${sendErr.message}`, false, false);
@@ -12278,7 +13236,7 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
         
         try {
           await sendEncrypted(dataStr, 'ur');
-          showScanStatus(`✓ UR sequence sent (encrypted)`, true, false);
+          showScanStatus(`✓ Sent (encrypted): ${detectURType(dataStr).label} — verify on your signing device, not in this app.`, true, false);
         } catch (err) {
           showScanStatus(`❌ Send failed: ${err.message}`, false, false);
         }
@@ -12311,7 +13269,12 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
 
       try {
         await sendEncrypted(scannedText, 'qr');
-        showScanStatus(`✓ QR sent (encrypted): ${scannedText.substring(0, 20)}...`, true, false);
+        // [send-side display policy] Keylay is a relay, not a verification surface. This
+        // toast confirms a scan was captured and relayed by naming its content TYPE only —
+        // never the payload itself. A short address prefix can match a poisoned look-alike,
+        // so we show the type and say plainly that the authoritative check is the signing
+        // device. Do not restore any payload/address substring display here.
+        showScanStatus(`✓ Sent (encrypted): ${detectURType(scannedText).label} — verify on your signing device, not in this app.`, true, false);
       } catch (err) {
         showScanStatus(`❌ Send failed: ${err.message}`, false, false);
       }
@@ -12358,15 +13321,19 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
 
       let currentFrameIndex = 0;
       
-      const statusText = isPartial ? 
-        `⚠️ Partial UR Sequence: ${frames.length} frames (incomplete)` :
-        `✅ Complete UR Sequence: ${frames.length} frames`;
+      // frames.length is the TOTAL number of frames in this animation (how many exist),
+      // not how many have been read. The animation cycles through all of them on a loop.
+      const statusText = isPartial ?
+        `⚠️ Animated QR — ${frames.length} frames (incomplete sequence)` :
+        `Animated QR (${frames.length} frames) — point your signing device's camera at the screen to scan it.`;
       
       if (qrText) {
         qrText.textContent = statusText;
       }
 
-      // Hide the canvas — we use an img element instead (more reliable)
+      // Make the QR display area visible (it may be hidden on the sender side before the
+      // first display) and hide the canvas — we render into an img element instead.
+      if (qrBox) qrBox.style.display = 'block';
       if (qrCanvas) qrCanvas.style.display = 'none';
 
       function displayFrame() {
@@ -12416,6 +13383,74 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
         animationInterval = setInterval(() => {
           try { displayFrame(); } catch (e) { console.error('❌ displayFrame (interval):', e); }
         }, UR_DISPLAY_INTERVAL_MS);
+      }
+    }
+
+    // [TF2] Stream a UR as a true fountain: each tick emits a FRESH part from a live encoder
+    // (the pure fragments first, then endless mixed parts). A full fountain decoder that
+    // missed a frame can reconstruct it from the next part instead of waiting for a specific
+    // frame to cycle back — faster to capture under poor scanning. Only for signers that
+    // decode mixed fountain parts; the "UR loop" mode is the safe choice for pure-only ones.
+    // ---- Receiver format toggle: UR loop / BBQr [TF2] ----
+    // (A fountain-code streaming mode was tried and removed: BC-UR fountain/rateless parts are
+    // rejected by the wallets tested — Nunchuk and BlueWallet both fail on it, and BlueWallet
+    // reads everything else. No wallet was found that reliably imports an unbounded fountain,
+    // so Keylay only emits the looping pure fragments, which every UR decoder accepts.)
+    const RECEIVER_MODES = {
+      loop: { label: 'UR — loop', title: 'Animated UR QR (looping the fixed set of frames). Read by UR wallets — Nunchuk, BlueWallet, Keystone, Passport, Jade, SeedSigner, Sparrow.' },
+      bbqr: { label: 'BBQr',      title: 'Animated BBQr QR. Read by Coldcard, BlueWallet, and Sparrow. (Nunchuk does not read BBQr — use UR for Nunchuk.)' },
+    };
+    let receiverMode = null;
+    function availableReceiverModes() {
+      const modes = [];
+      const arrivedUR = lastReceivedFormat === 'ur' || lastReceivedFormat === 'ur_partial';
+      const p = getReceivedPayload();
+      if (arrivedUR || p) modes.push('loop');
+      if (lastReceivedFormat === 'bbqr' || p) modes.push('bbqr');
+      return modes;
+    }
+    function setReceiverModeButtons() {
+      const btns = [document.getElementById('showReceivedAsURBtn'), document.getElementById('showReceivedAsBBQRBtn')];
+      btns.forEach(b => { if (b) b.style.display = 'none'; });
+      const others = availableReceiverModes().filter(m => m !== receiverMode);
+      others.slice(0, 2).forEach((m, i) => {
+        const b = btns[i]; if (!b) return;
+        b.textContent = 'Show as ' + RECEIVER_MODES[m].label;
+        b.title = RECEIVER_MODES[m].title;
+        b.dataset.mode = m;
+        b.style.display = 'inline-block';
+      });
+    }
+    function renderReceiverMode(mode) {
+      const arrivedUR = lastReceivedFormat === 'ur' || lastReceivedFormat === 'ur_partial';
+      const p = getReceivedPayload();
+      try {
+        if (mode === 'loop') {
+          if (arrivedUR) displayURSequence(lastReceivedData);           // pass through the arrived frames
+          else if (p && p.kind === 'binary') displayAsUR(p.bytes, 'crypto-psbt');
+          else if (p && p.kind === 'text') displayAsUR(p.text, 'output-descriptor');
+          else return;
+        } else if (mode === 'bbqr') {
+          if (lastReceivedFormat === 'bbqr') displayBBQRSequence(lastReceivedData);
+          else if (p) {
+            const bytes = (p.kind === 'binary') ? p.bytes : new TextEncoder().encode(p.text);
+            const ft = (p.kind === 'binary') ? 'P' : 'U';
+            encodeToBBQR(bytes, ft).then(frames => showBBQRAnimation(frames))
+              .catch(e => showScanStatus('❌ BBQr error: ' + e.message, false, false));
+          } else return;
+        }
+        receiverMode = mode;
+        setReceiverModeButtons();
+      } catch (e) { showScanStatus('❌ Could not render: ' + e.message, false, false); }
+    }
+    // Set the toggle up to match whatever was just auto-displayed on receipt.
+    function initReceiverModes() {
+      if (lastReceivedFormat === 'ur' || lastReceivedFormat === 'ur_partial') { receiverMode = 'loop'; setReceiverModeButtons(); }
+      else if (lastReceivedFormat === 'bbqr' || lastReceivedFormat === 'binary') { receiverMode = 'bbqr'; setReceiverModeButtons(); }
+      else {
+        const p = getReceivedPayload();               // plain text
+        if (p && p.kind === 'text') renderReceiverMode('loop');  // descriptor: animate + enable toggle
+        // bare address / unclassified text: leave the static QR, no toggle
       }
     }
 
@@ -12471,6 +13506,75 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
     }
 
     // Display a locally-generated BBQR animation for a nearby Coldcard to scan.
+    // [TF2] Encode a payload as an animated UR sequence and display it, for a
+    // UR-reading device (Keystone, Passport, Jade, SeedSigner, Sparrow). Handles both
+    // binary payloads (PSBT/raw tx -> crypto-psbt) and text payloads (output descriptor
+    // -> output-descriptor). The pure fragments (1..N) are shown on a loop: every frame
+    // is essential and sufficient, so a scanner that misses one catches it next cycle.
+    // Animating a long descriptor as UR also avoids one dense, hard-to-scan static QR.
+    function displayAsUR(payload, urType) {
+      if (!window.KeylayUR) {
+        showScanStatus('❌ UR encoder unavailable', false, true);
+        return 0;
+      }
+      const isText = typeof payload === 'string';
+      if (!urType) urType = isText ? 'output-descriptor' : 'crypto-psbt';
+      const wrapped = isText ? KeylayUR.cborText(payload) : KeylayUR.cborBytes(payload);
+      const enc = new KeylayUR.UREncoder(urType, wrapped, 200, 0);
+      const n = Math.max(1, enc.fragmentsLength);
+      const frames = [];
+      for (let i = 0; i < n; i++) frames.push(enc.nextPart());
+      // Self-check: round-trip the frames we're about to display.
+      try {
+        const dec = new KeylayUR.URDecoder();
+        for (const f of frames) { if (dec.isComplete()) break; dec.receivePart(f); }
+        const ex = dec.isSuccess() ? KeylayUR.extractPayload(urType, dec.resultRawCBOR()) : null;
+        const okCheck = isText
+          ? (ex && ex.kind === 'text' && ex.text === payload)
+          : (ex && ex.kind === 'binary' && KeylayUR.bytesToHex(ex.bytes) === KeylayUR.bytesToHex(payload));
+        if (!okCheck) {
+          showScanStatus('❌ UR integrity check failed — not displaying', false, false);
+          return 0;
+        }
+      } catch (e) { if (DEBUG) console.warn('UR self-check error:', e); }
+      displayURSequence(frames.join('\n'), false);
+      return frames.length;
+    }
+
+    // Return a descriptor string for the current received data if it is one — either a
+    // decoded crypto-output/account/output-descriptor, or a plain descriptor relayed as
+    // text — so it can be offered as an animated "Show as UR". Returns null otherwise.
+    function receivedDescriptorText() {
+      if (!lastReceivedData || typeof lastReceivedData !== 'string') return null;
+      const d = decodeURText(lastReceivedData);
+      if (d && d.kind === 'text') return d.text;
+      if (!lastReceivedData.toLowerCase().startsWith('ur:') &&
+          /(^|[^a-z])(wsh|wpkh|sh|pkh|tr|combo|sortedmulti|multi|addr|raw)\(/i.test(lastReceivedData)) {
+        return lastReceivedData.trim();
+      }
+      return null;
+    }
+
+    // Return the received payload in canonical form for re-encoding into either QR format,
+    // or null if there is nothing renderable. Format (UR/BBQr) and payload (binary/text) are
+    // independent, so both format buttons work off this regardless of how the data arrived.
+    function getReceivedPayload() {
+      // Binary file relayed as a base64 envelope (a PSBT).
+      if (lastReceivedFormat === 'binary' && lastReceivedBinaryBytes) {
+        return { kind: 'binary', bytes: lastReceivedBinaryBytes };
+      }
+      // Decodable UR (PSBT bytes, or descriptor/setup text).
+      if (typeof lastReceivedData === 'string' && lastReceivedData.toLowerCase().startsWith('ur:')) {
+        const d = decodeURText(lastReceivedData);
+        if (d && d.kind === 'binary') return { kind: 'binary', bytes: d.bytes };
+        if (d && d.kind === 'text') return { kind: 'text', text: d.text };
+      }
+      // Plain-text descriptor relayed as text.
+      const desc = receivedDescriptorText();
+      if (desc) return { kind: 'text', text: desc };
+      return null;
+    }
+
     // Called when the sender (or receiver) clicks "Show as QR for Coldcard".
     function showBBQRAnimation(bbqrFrames) {
       if (animationInterval) {
@@ -12683,7 +13787,7 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
         if (DEBUG) console.log('✅ Peer hello received, deriving session key');
 
         try {
-          sessionKey = await deriveSessionKey(ephemeralKeyPair, myPublicKeyB64, theirPublicKeyB64);
+          sessionKey = await deriveSessionKey(ephemeralKeyPair, myPublicKeyB64, theirPublicKeyB64, kCode, channelHash);
         } catch (err) {
           console.error('Session key derivation failed:', err);
           return;
@@ -12817,7 +13921,8 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
 
       let text;
       try {
-        text = await decrypt(msg.payload, sessionKey, msg.counter);
+        const aad = buildAAD('data', channelHash, msg.format, msg.counter);
+        text = await decrypt(msg.payload, sessionKey, aad);
         recvCounter = msg.counter;
         bumpIdleTimer();
         if (DEBUG) console.log('🔓 Decrypted payload successfully');
@@ -12843,6 +13948,9 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
           if (receiverControls) receiverControls.style.display = 'block';
           if (parsed.isBinary && parsed.data) {
             const bytes = Uint8Array.from(atob(parsed.data), c => c.charCodeAt(0));
+            lastReceivedBinaryBytes = bytes;   // keep for "Show as UR" re-display [TF2]
+            const showURBtn = document.getElementById('showReceivedAsURBtn');
+            if (showURBtn) showURBtn.style.display = 'inline-block';
             if (DEBUG) {
               const firstBytes = Array.from(bytes.slice(0, 5)).map(b => b.toString(16).padStart(2, '0')).join(' ');
               console.log(`📦 Receiver BBQR encode: ${bytes.length} bytes, first 5: ${firstBytes}`);
@@ -12893,25 +14001,26 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
           });
         }
       }
+
+      // [TF2] Wire up the loop/fountain/BBQr format toggle to match what was just displayed.
+      // (For a plain-text descriptor this also swaps the dense static QR for an animated UR.)
+      initReceiverModes();
     }
 
     function updateHandshakeUI() {
       const active = handshakeState === 'ACTIVE';
-      const fileBtn = document.querySelector('#senderFileControls .btn');
-      const fileInput = document.getElementById('fileUploadInput');
+      // Start Scan relays a scanned QR to the peer, so it needs a completed handshake.
       if (startScanBtn) {
         startScanBtn.disabled = !active;
-        startScanBtn.title = active ? '' : 'Waiting for peer handshake...';
+        startScanBtn.title = active ? '' : 'Waiting for peer to connect…';
       }
-      if (fileBtn) {
-        fileBtn.disabled = !active;
-        fileBtn.title = active ? '' : 'Waiting for peer handshake...';
-      }
-      if (fileInput) fileInput.disabled = !active;
+      // Upload File is intentionally NOT gated on the handshake: uploading a file to show as a
+      // QR for a local hardware wallet needs no peer. If a peer is connected the file is also
+      // relayed; if not, it is loaded locally only (see handleTextFileUpload / handleBinaryFileUpload).
       if (scanStatus) {
         if (!active) {
           scanStatus.style.display = 'block';
-          scanStatus.textContent = '⏳ Waiting for peer handshake to complete...';
+          scanStatus.textContent = '⏳ Waiting for a peer to connect. You can still upload a file to show as a QR for a local device.';
           scanStatus.style.color = '#888';
         } else if (scanStatus.textContent.startsWith('⏳')) {
           scanStatus.textContent = '';
@@ -12920,16 +14029,36 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       }
     }
 
+    // Clear all scanned/received data state and hide every data-dependent control and
+    // type label. Called on leave and on any role change, so a stale "Output Descriptor"
+    // (or other) type label can't linger next to the Start Scan / Claim Sender buttons
+    // after the data it described is gone.
+    function clearDataUI() {
+      lastScannedData = null;
+      lastScannedFormat = null;
+      lastReceivedData = null;
+      lastReceivedFormat = null;
+      lastReceivedBinaryBytes = null;
+      lastUploadedBytes = null;
+      lastUploadedFilename = null;
+      _urDecodeCache = { key: null, val: null };
+      receiverMode = null;
+      const ids = ['lastScannedType', 'receivedDataType', 'downloadNote', 'decodedView',
+                   'copyBase64Btn', 'showAsURBtn', 'showReceivedAsURBtn', 'showReceivedAsBBQRBtn',
+                   'showAsQRBtn', 'saveScannedBtn'];
+      for (const id of ids) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
+      const dt = document.getElementById('decodedText'); if (dt) dt.value = '';
+    }
+
     function updateRoleUI() {
       // Stop any active scan regardless of direction of role change
       stopScanning();
       // Stop any running animation and wipe the QR display area
       stopAnimation();
 
-      // Clear status and stale received-data state
+      // Clear status and all stale scanned/received data + labels
       if (scanStatus) { scanStatus.textContent = ''; scanStatus.style.display = 'none'; }
-      lastReceivedData = null;
-      lastReceivedFormat = null;
+      clearDataUI();
 
       // Role label
       document.getElementById("roleStatus").textContent = isSender ? "You are the Sender" : "You are a Receiver";
@@ -12991,12 +14120,17 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       stopAnimationBtn = document.getElementById("stopAnimationBtn");
       receiverControls = document.getElementById("receiverControls");
 
-      // Receiver controls: Clear / Download
+      // Clear: stop any animation and fully reset the data UI — clears scanned/received
+      // state and hides every data-dependent control (Show-as-… , Save, decoded view) and
+      // the QR display, on both the sender and receiver sides.
       if (stopAnimationBtn) {
         stopAnimationBtn.addEventListener('click', () => {
           stopAnimation();
-          lastReceivedData = null;
-          lastReceivedFormat = null;
+          clearDataUI();
+          if (receiverControls) receiverControls.style.display = 'none';
+          if (qrBox) qrBox.style.display = 'none';
+          if (qrText) qrText.textContent = '';
+          const img = document.getElementById('qrDisplayImg'); if (img) img.remove();
         });
       }
       const downloadReceivedBtn = document.getElementById('downloadReceivedBtn');
@@ -13225,12 +14359,6 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
         showScanStatus("⏹️ Scanning cancelled", true, true);
       };
 
-      if (stopAnimationBtn) {
-        stopAnimationBtn.onclick = () => {
-          stopAnimation();
-        };
-      }
-
       claimSenderBtn.onclick = () => {
         stopAnimation();
         if (receiverControls) receiverControls.style.display = 'none';
@@ -13264,32 +14392,53 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       const showAsQRBtn = document.getElementById('showAsQRBtn');
       if (showAsQRBtn) {
         showAsQRBtn.onclick = async () => {
-          if (!lastUploadedBytes) {
-            showScanStatus('❌ No binary file loaded — upload a .psbt first', false, true);
+          // Uploaded PSBT (binary, type P) or a scanned/uploaded descriptor (text, type U).
+          let bytes = null, fileType = 'P';
+          if (lastUploadedBytes) { bytes = lastUploadedBytes; fileType = 'P'; }
+          else if (typeof lastScannedData === 'string' && lastScannedData.trim()) {
+            bytes = new TextEncoder().encode(lastScannedData.trim()); fileType = 'U';
+          } else {
+            showScanStatus('❌ Nothing loaded to show', false, true);
             return;
           }
-          if (DEBUG) {
-            const firstBytes = Array.from(lastUploadedBytes.slice(0, 5)).map(b => b.toString(16).padStart(2, '0')).join(' ');
-            console.log(`📦 BBQR encode: ${lastUploadedBytes.length} bytes, first 5: ${firstBytes}`);
-          }
-          const frames = await encodeToBBQR(lastUploadedBytes);
-          try {
-            const roundTripped = await decodeBBQRToBytes(frames.join('\n'));
-            const hashOrig = await crypto.subtle.digest('SHA-256', lastUploadedBytes);
-            const hashRT   = await crypto.subtle.digest('SHA-256', roundTripped);
-            const orig = Array.from(new Uint8Array(hashOrig)).map(b => b.toString(16).padStart(2,'0')).join('');
-            const rt   = Array.from(new Uint8Array(hashRT)).map(b => b.toString(16).padStart(2,'0')).join('');
-            if (orig !== rt) {
-              showScanStatus('❌ BBQR integrity check FAILED — encoded bytes do not round-trip.', false, false);
-              console.error('BBQR integrity mismatch', { orig, rt });
-              return;
+          const frames = await encodeToBBQR(bytes, fileType);
+          if (fileType === 'P') {
+            try {
+              const roundTripped = await decodeBBQRToBytes(frames.join('\n'));
+              const hashOrig = await crypto.subtle.digest('SHA-256', bytes);
+              const hashRT   = await crypto.subtle.digest('SHA-256', roundTripped);
+              const orig = Array.from(new Uint8Array(hashOrig)).map(b => b.toString(16).padStart(2,'0')).join('');
+              const rt   = Array.from(new Uint8Array(hashRT)).map(b => b.toString(16).padStart(2,'0')).join('');
+              if (orig !== rt) {
+                showScanStatus('❌ BBQr integrity check FAILED — encoded bytes do not round-trip.', false, false);
+                console.error('BBQr integrity mismatch', { orig, rt });
+                return;
+              }
+              if (DEBUG) console.log('✅ BBQr integrity OK — round-trip SHA-256 matches');
+            } catch (e) {
+              console.warn('BBQr integrity check error:', e);
             }
-            if (DEBUG) console.log('✅ BBQR integrity OK — round-trip SHA-256 matches');
-          } catch (e) {
-            console.warn('BBQR integrity check error:', e);
           }
           showBBQRAnimation(frames);
-          showScanStatus(`📱 Showing ${frames.length}-frame BBQR — hold up to Coldcard`, true, false);
+          showScanStatus(`📱 Showing as animated QR (BBQr), ${frames.length} frames — point your signing device's camera at the screen to scan it.`, true, false);
+        };
+      }
+
+      // "Show as UR" — sender side: an uploaded PSBT (crypto-psbt) or a scanned/uploaded
+      // output descriptor (output-descriptor), shown as an animated UR. [TF2]
+      const showAsURBtn = document.getElementById('showAsURBtn');
+      if (showAsURBtn) {
+        showAsURBtn.onclick = () => {
+          let count = 0;
+          if (lastUploadedBytes) {
+            count = displayAsUR(lastUploadedBytes, 'crypto-psbt');
+          } else if (typeof lastScannedData === 'string' && lastScannedData.trim()) {
+            count = displayAsUR(lastScannedData.trim(), 'output-descriptor');
+          } else {
+            showScanStatus('❌ Nothing to show as UR', false, true);
+            return;
+          }
+          if (count) showScanStatus(`📱 Showing as animated QR (UR), ${count} frames — point your signing device's camera at the screen to scan it.`, true, false);
         };
       }
 
@@ -13297,7 +14446,12 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
       if (copyReceivedBtn) {
         copyReceivedBtn.addEventListener('click', () => {
           if (!lastReceivedData) return;
-          navigator.clipboard.writeText(lastReceivedData).then(() => {
+          // For a decoded text artifact (descriptor), copy the decoded string;
+          // otherwise copy the raw received data.
+          const decoded = (typeof lastReceivedData === 'string' && lastReceivedData.toLowerCase().startsWith('ur:'))
+            ? decodeURText(lastReceivedData) : null;
+          const toCopy = (decoded && decoded.kind === 'text') ? decoded.text : lastReceivedData;
+          navigator.clipboard.writeText(toCopy).then(() => {
             copyReceivedBtn.textContent = 'copied!';
             setTimeout(() => { copyReceivedBtn.textContent = 'Copy'; }, 1500);
           }).catch(() => {
@@ -13306,6 +14460,37 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
           });
         });
       }
+
+      // [Phase A] Copy a binary artifact (PSBT / raw tx) as base64 — the paste-into-Sparrow
+      // bridge. Base64 only; Sparrow's PSBT loader accepts base64 (and hex, but base64 is
+      // the canonical paste form, so hex would be redundant).
+      const copyBase64Btn = document.getElementById('copyBase64Btn');
+      if (copyBase64Btn) {
+        copyBase64Btn.addEventListener('click', () => {
+          const decoded = (typeof lastReceivedData === 'string' && lastReceivedData.toLowerCase().startsWith('ur:'))
+            ? decodeURText(lastReceivedData) : null;
+          if (!decoded || decoded.kind !== 'binary') return;
+          const b64 = bytesToBase64(decoded.bytes);
+          navigator.clipboard.writeText(b64).then(() => {
+            copyBase64Btn.textContent = 'copied!';
+            setTimeout(() => { copyBase64Btn.textContent = 'Copy as base64'; }, 1500);
+          }).catch(() => {
+            copyBase64Btn.textContent = 'failed';
+            setTimeout(() => { copyBase64Btn.textContent = 'Copy as base64'; }, 1500);
+          });
+        });
+      }
+
+      // Receiver format toggle [TF2]: the two buttons are generic "switch to <mode>" controls
+      // whose target mode (loop / fountain / bbqr) is set in setReceiverModeButtons. Clicking
+      // re-renders in that mode and re-points the buttons at the other two modes.
+      ['showReceivedAsURBtn', 'showReceivedAsBBQRBtn'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.addEventListener('click', () => {
+          const mode = btn.dataset.mode;
+          if (mode) renderReceiverMode(mode);
+        });
+      });
 
       // "Show as QR for Coldcard" — receiver side (after receiving a binary file)
 
@@ -13328,7 +14513,7 @@ var QRCode=function(t){"use strict";var r,e=function(){return"function"==typeof 
     });
   </script>
   <div style="margin-top: 4em; font-size: 11px; color: #aaa; text-align: center; padding-bottom: 2em;">
-    v0.8.0 · <a href="https://github.com/keylaybtc" style="color: #aaa;">GitHub</a> · <a href="https://keylay.org" style="color: #aaa;">keylay.org</a>
+    v0.9.0 · <a href="https://github.com/keylaybtc" style="color: #aaa;">GitHub</a> · <a href="https://keylay.org" style="color: #aaa;">keylay.org</a>
     <br>No full IPs logged. <a href="https://keylay.org/security.html" style="color: #aaa;">Security model</a>
     <br>Alpha software. <a href="https://github.com/keylaybtc/keylay#disclaimer" style="color: #aaa;">Use at your own risk</a>
   </div>

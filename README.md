@@ -62,9 +62,9 @@ Supports **BC-UR2** (Keystone, Passport, Jade, Foundation) and **BBQR** (Coldcar
 - The channel code is used only for key derivation and is never sent to the server
 - The relay sees only ciphertext — never plaintext, the raw channel code, or any application-layer metadata (file names, file types, payload contents). Like any relay, it can necessarily observe connection-layer metadata: message timing, ciphertext sizes, and which two connections are exchanging data. This is inherent to any relayed transport and is stated here so you can weigh it; the planned Nostr transport reduces reliance on any single relay operator
 - No accounts, no databases. The hosted relay at `app.keylay.org` writes operational logs limited to truncated IP prefixes (first two octets for IPv4, first two hextets for IPv6) for rate-limit triage and country-level aggregation; logs rotate on a 7-day window. Full IP addresses, channel codes, channel hashes, session content, and message counters are never logged
-- Encryption: AES-256-GCM session keys derived from X25519 key exchange (HKDF); PBKDF2-SHA256 (300,000 iterations) derives the HMAC key used to authenticate the handshake
+- Encryption: AES-256-GCM session keys derived from X25519 key exchange (HKDF), bound to the channel and both public keys; every message's type, channel, format, and counter are authenticated alongside the ciphertext. The session code is stretched once with PBKDF2-HMAC-SHA512 (300,000 iterations) and that stretched key derives everything code-dependent — the channel identifier the relay sees, and the HMAC key that authenticates the handshake (protocol v2, since v0.9.0)
 - The app hard-fails without encryption: in a browsing context where the Web Crypto API is unavailable, Keylay displays a warning banner and disables the Join button. It never falls back to sending data unencrypted — there is no code path that transmits plaintext
-- An internal security review (three revisions, all findings resolved) is published at [keylay.org/security.html](https://keylay.org/security.html); the full report is `Keylay_Security_Review_v3.pdf`. This is not a formal third-party audit — see [Roadmap](#roadmap)
+- An internal security review (five revisions) is published at [keylay.org/security.html](https://keylay.org/security.html); the full report is `Keylay_Security_Review_v5.pdf`. One low-severity finding remains open and is disclosed as accepted by design (the code-stretching salt is necessarily a public constant — see the security page). This is not a formal third-party audit — see [Roadmap](#roadmap)
 
 ## Technology
 
@@ -73,6 +73,7 @@ Supports **BC-UR2** (Keystone, Passport, Jade, Foundation) and **BBQR** (Coldcar
   - QR scanning: [jsQR v1.4.0](https://github.com/cozmo/jsQR)
   - QR generation: [qrcode v1.5.1](https://github.com/soldair/node-qrcode)
   - Zlib compression (BBQr 'Z' encoding): [pako v2.1.0](https://github.com/nodeca/pako) — required because `CompressionStream('deflate')` produces RFC 1950 output (78 9C header) that Coldcard Q rejects; pako's `deflateRaw` with `windowBits: 10` produces the raw DEFLATE format the spec requires
+  - Each inlined block is byte-identical to its published release; the sources and SHA-256 hashes are recorded in [PROVENANCE.md](PROVENANCE.md) and published on [keylay.org/verify.html](https://keylay.org/verify.html), and `node tools/verify-vendored.mjs` checks them
 - BBQR encode/decode: implemented natively per the [BBQr spec](https://github.com/coinkite/BBQr)
 - WebSocket relay (`server.js`) — a single stateless Node.js file, no database
 
@@ -82,7 +83,7 @@ There are three ways to run Keylay, in increasing order of trust removed from th
 
 **1. Hosted app (convenience tier).** Open [app.keylay.org](https://app.keylay.org). The relay only ever sees ciphertext, but the *application code* is delivered to your browser on every load — you are trusting that the served code matches the published source at that moment. This is the right tier for evaluating Keylay and for threat models where a targeted, per-load code swap by the host is not a concern.
 
-**2. Local app + hosted relay (recommended for higher-threat use).** Serve `index.html` locally from a copy you verified, and let it use the hosted relay. This removes the code-delivery trust entirely — the relay still only sees ciphertext, and the code executing in your browser is the code you audited. No Node.js required:
+**2. Local app + hosted relay (recommended for higher-threat use).** Serve `index.html` locally from a copy you verified, and let it use the hosted relay. This removes the code-delivery trust entirely — the relay still only sees ciphertext, and the code executing in your browser is the code you audited. **Both peers must run the same protocol version:** v0.9.0 introduced protocol v2, and a v0.9.x client cannot complete a session with a v0.8.x client (the two derive different channel identifiers and never meet). If you self-host, check out the release tag that matches what your peer runs — for the hosted app, that is the latest tag on [keylay.org/verify.html](https://keylay.org/verify.html). No Node.js required:
 
 ```bash
 python3 -m http.server 8081   # or any static file server
@@ -128,8 +129,6 @@ Near-term:
 - [ ] Peer-to-peer transport via Nostr — Nostr relays become the primary channel with WebSocket as fallback; eliminates the need to trust any single relay operator
 - [ ] Wallet guides — step-by-step setup and signing flows for major wallet and coordinator combinations
 - [ ] Challenge/response pairing for out-of-band verification before transfer
-- [ ] BC-UR2 encoding for output to Keystone/Passport (currently decodes only)
-- [ ] UR decoding to alternate save formats (base64 PSBT, plain text descriptor, BSMS)
 - [ ] Connection quality indicator and receiver count display
 
 Longer-term:
@@ -137,7 +136,7 @@ Longer-term:
 - [ ] Multi-party sessions — declared signer count with slot-based key collection, enabling in-browser descriptor assembly without separate per-signer sessions
 - [ ] Persistent / resumable sessions — named sessions with store-and-forward delivery over Nostr, so participants can coordinate asynchronously
 - [ ] PWA support — installable mobile use without an app store
-- [ ] Memory-hard KDF upgrade — replace PBKDF2 with Argon2id or scrypt for the handshake key derivation (a breaking protocol change requiring a migration plan)
+- [ ] Memory-hard KDF upgrade — replace PBKDF2 with Argon2id or scrypt for the handshake key derivation. **Blocked on browser support:** the browser's native crypto API (Web Crypto) offers PBKDF2 but no memory-hard KDF, and Keylay will not ship a hand-rolled or third-party implementation of one. This unblocks only if browsers add it natively; it would then be a breaking protocol change requiring a migration plan
 - [ ] Formal third-party security audit — the current review is internal; an external audit is planned before the project exits alpha
 
 ## Disclaimer

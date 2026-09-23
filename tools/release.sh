@@ -60,6 +60,18 @@ grep -q "^## \[$VER\]" CHANGELOG.md \
 printf 'REMINDER: cross-check the public roadmap trio before tagging:\n'
 printf '  PLANNED_FEATURES.md <-> README.md Roadmap <-> keylay.org status section\n\n'
 
+# --- Vendored-library provenance --------------------------------------------
+# The three inlined libraries (jsQR, qrcode, pako) must still match their published
+# hashes; abort the release if any drifted. See PROVENANCE.md / tools/verify-vendored.mjs.
+if command -v node >/dev/null 2>&1; then
+  # Relative path on purpose: we are already in $APP_DIR, and under Cygwin/Git Bash a
+  # native Windows node cannot open an absolute /cygdrive/... path.
+  node tools/verify-vendored.mjs \
+    || die "vendored-library check failed — either node could not run the check (see the error above) or an inlined dependency no longer matches its published hash (see PROVENANCE.md)"
+else
+  printf 'WARNING: node not found — skipping vendored-library provenance check\n\n'
+fi
+
 # --- Version bumps -----------------------------------------------------------
 # package.json  ("version": "x.y.z")
 sed -i -E "s/(\"version\"[[:space:]]*:[[:space:]]*\")[0-9]+(\.[0-9]+)*(\")/\1$VER\3/" package.json

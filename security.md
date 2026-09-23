@@ -1,13 +1,13 @@
-# Security Review Summary — v4
+# Security Review Summary — v5
 
 **Subject:** Keylay Encrypted QR Relay — index.html, server.js
 **Security page:** security.html (keylay.org/security)
 **Audit scope:** Cryptographic correctness, protocol claims, relay trust model, server hardening
 **Methodology:** Manual source review, claim-vs-code differential analysis
 **Original review:** April 2, 2026
-**This revision:** August 2026 (R4)
-**Changes since v3:** August 2026 code audit. Two security findings resolved in v0.8.0 (URL code exposure, exportable ephemeral key) plus a low-entropy-code warning; four low-severity findings disclosed as open with scheduled fixes (unauthenticated `format` field, fixed KDF salt, unbounded relayed decompression, one vendored library's provenance).
-**Reviewed against:** app v0.8.0
+**This revision:** September 2026 (R5)
+**Changes since v4:** Protocol v2 (app v0.9.0, wire-breaking). Three of the four open R4 findings are resolved (S3 unauthenticated `format` field, S4 unbounded relayed decompression, S5 vendored-library provenance). One new finding, S12 (offline inversion of the channel identifier), was identified during the v2 design and is resolved in v0.9.0. S11 (fixed KDF salt) is reclassified from "planned for protocol v2" to **open, accepted by design**, with the reasoning below. Scope of R5: the protocol v2 cryptographic path and the four finding fixes were reviewed line-by-line against the v0.9.0 source and exercised with the test harnesses in `tools/`; claims confirmed in R4 that v2 did not touch (server limits, logging, CSP, timers) were re-checked by inspection only.
+**Reviewed against:** app v0.9.0 (protocol v2)
 **Status:** Internal review — not a formal third-party security audit
 
 ---
@@ -17,8 +17,10 @@
 Every security property stated in the Keylay security page was traced to its corresponding code path and evaluated independently. The review covered:
 
 - Session code generation and entropy
-- Channel identifier derivation (SHA-256 hashing)
-- PBKDF2 key stretching and HMAC handshake authentication
+- Session code normalization (lowercase, non-alphanumerics stripped, minimum length checked after normalization)
+- Code stretching (PBKDF2-HMAC-SHA512) and derivation of every code-dependent value from the stretched key
+- Channel identifier derivation from the stretched key
+- HMAC handshake authentication
 - Ephemeral X25519 key pair generation and lifecycle
 - HKDF session key derivation and participant binding
 - AES-256-GCM message encryption, IV generation, and AAD construction
@@ -36,11 +38,11 @@ Every security property stated in the Keylay security page was traced to its cor
 
 All core cryptographic and operational claims check out against the deployed code:
 
-- The relay sees only AES-GCM ciphertext and a derived channel hash — never plaintext or the raw session code.
+- The relay sees only AES-GCM ciphertext and a derived channel hash — never plaintext or the raw session code. Since v0.9.0 the channel hash is derived from the PBKDF2-stretched code, not the raw code, so inverting it costs one full stretch per guess.
 - The HMAC handshake prevents relay key substitution without code knowledge.
 - Forward secrecy holds as implemented. Ephemeral X25519 private keys are set to null immediately after session key derivation. Learning the code after a session ends does not decrypt past traffic.
-- No session key is transmitted. Both peers derive the AES-256-GCM key locally from X25519 shared bits processed through HKDF, with the HKDF info field binding the key to the sorted pair of ephemeral public keys.
-- Counter-bound AAD prevents replay of recorded ciphertext. The receive-side counter is advanced only after successful decryption.
+- No session key is transmitted. Both peers derive the AES-256-GCM key locally from X25519 shared bits processed through HKDF, with the stretched code as the HKDF salt and the info field binding the key to the channel identifier and the sorted pair of ephemeral public keys.
+- The authenticated header (AAD = protocol tag, message type, channel identifier, payload format, counter) prevents replay of recorded ciphertext and relay-side alteration of any header field. The receive-side counter is advanced only after successful decryption.
 - Unencrypted data messages are explicitly rejected by the client.
 - The server correctly enforces two-peer session limits.
 - No full IP addresses are logged — truncateIp() reduces every address to its /16 prefix before any log entry is written.
@@ -107,7 +109,7 @@ Any connected peer can send `{type: "claim"}` to take the sender role, demoting 
 
 ### Revision 3 → 4 (August 2026 code audit, app v0.8.0)
 
-An in-depth code audit reviewed the deployed client against every claim on this page. Two security findings were fixed before v0.8.0 shipped; four low-severity findings are disclosed as open with scheduled fixes.
+An in-depth code audit reviewed the deployed client against every claim on this page. Two security findings were fixed before v0.8.0 shipped; four low-severity findings were disclosed as open with scheduled fixes (their disposition is in Revision 4 → 5).
 
 **S1: Session code exposed via the URL — resolved in v0.8.0.**
 The app read and pre-filled a session code from a `?code=` URL parameter. A code in the URL rides the HTTP request to the app host and can land in access logs, browser history, or the Referer header — contradicting the property that the raw code never touches the server. The URL parameter was removed; the code is entered manually only. Severity: medium.
@@ -118,27 +120,48 @@ The per-session X25519 private key was generated extractable. Nothing exported i
 **S6: No warning on low-entropy typed codes — resolved in v0.8.0.**
 Length was enforced but entropy was not, so a user could type an obviously weak code (e.g. all-same or sequential characters). A soft, non-blocking warning now nudges toward the generator. Severity: informational.
 
-**S3: Envelope `format` field not authenticated — OPEN, planned for protocol v2.**
+**S3: Envelope `format` field not authenticated — open at R4; resolved in v0.9.0 (see Revision 4 → 5).**
 The GCM additional authenticated data binds the counter but not the `format` field; a relay can flip it and the client still decrypts and runs the relay-chosen branch. Demonstrated in a harness. Fix (bind `format` + channel identifier + protocol version into the AAD) is wire-breaking and batched into protocol v2. Severity: low, contained.
 
-**S11: Fixed PBKDF2 salt enables multi-target amplification — OPEN, planned for protocol v2.**
+**S11: Fixed PBKDF2 salt enables multi-target amplification — open at R4; reclassified accepted-by-design in R5 (see Revision 4 → 5).**
 The salt is a global constant, so key-stretching for a given code is identical across all sessions; a relay logging many handshakes can sweep the keyspace once against all captured sessions rather than per session. Fix (derive the salt per session from the channel identifier) is wire-breaking and batched with S3. Severity: low.
 
-**S4: Relayed decompression not output-bounded — OPEN, scheduled next release.**
+**S4: Relayed decompression not output-bounded — open at R4; resolved in v0.9.0.**
 A relayed BBQR compressed payload is inflated with no output ceiling; a small crafted frame can expand enormously (≈1000× measured). Member-gated and download-triggered, but a compromised co-signer could crash a counterpart's tab. Fix: cap inflate output and reject implausible ratios. Severity: low.
 
-**S5: One vendored library lacks verifiable provenance — OPEN, scheduled next release.**
+**S5: One vendored library lacks verifiable provenance — open at R4; resolved in v0.9.0.**
 Two of three inlined libraries hash to their published upstream builds; the QR encoder does not, so the "audit-equals-runtime" guarantee is unprovable for it at its pinned version. No tampering evidence. Fix: reconcile to the canonical build (or document build inputs) and add to a provenance table. Severity: low.
+
+---
+
+### Revision 4 → 5 (September 2026, protocol v2, app v0.9.0)
+
+Protocol v2 is a wire-breaking change: a v0.9.x client cannot complete a session with a v0.8.x client. It closes three of the four findings left open in R4 and one found during its own design.
+
+**S12: Channel identifier invertible offline — found during v2 design, resolved in v0.9.0.**
+Through v0.8.0 the channel identifier the relay sees was `SHA-256(code)`, truncated. A relay operator holding that value could run an offline guessing attack on the 10-character code at hash speed — roughly a day on one GPU for the generator's alphabet. Knowing the code does not by itself decrypt traffic (the session key also needs the ephemeral X25519 exchange), but it defeats the property that the relay learns nothing about the code. Fix: the code is stretched once with PBKDF2-HMAC-SHA512 (300,000 iterations, fixed domain salt) to `K_code`, and the channel identifier is `SHA-256("keylay-v2-channel|" || K_code)` truncated to 32 hex characters. The same `K_code` derives the handshake HMAC key and serves as the HKDF salt for the session key, so no value visible to the relay is computed from the raw code. Each guess now costs a full stretch. Severity: medium (relay-operator threat model).
+
+**S3: Envelope `format` field not authenticated — resolved in v0.9.0.**
+AES-GCM additional authenticated data is now `"keylay-v2|" || type || channelHash || format || counter`. Flipping any of these causes decryption to fail; verified by `tools/v2-crypto-test.mjs`.
+
+**S4: Relayed decompression not output-bounded — resolved in v0.9.0.**
+BBQr `Z` (compressed) payloads are inflated in streaming mode and aborted once output exceeds 8 MB, far above any real PSBT.
+
+**S5: One vendored library lacks verifiable provenance — resolved in v0.9.0.**
+The QR encoder has been reconciled to its published build. All three inlined libraries (jsQR 1.4.0, qrcode 1.5.1, pako 2.1.0) are byte-identical to their published releases; sources and SHA-256 hashes are in `PROVENANCE.md` and on keylay.org/verify.html, and `node tools/verify-vendored.mjs` confirms them (it also runs as a release preflight).
+
+**Also in v2:** the session key's HKDF info now includes the channel identifier as well as both public keys, so a key agreed for one channel and pair cannot be transplanted to another; the stretching hash moved from SHA-256 to SHA-512, which is costlier per guess on GPU hardware at no meaningful cost to a legitimate client; and session-code normalization is now defined (lowercase, every character outside `[a-z0-9]` removed, 10-character minimum checked after removal), so grouped or punctuated renderings of the same code reach the same channel.
+
+**S11: Fixed PBKDF2 salt — reclassified: OPEN, accepted by design.**
+R4 described a fix ("derive the salt per session from the channel identifier"). Under v2 that is circular — the channel identifier is itself derived from the stretched code — and on reflection no per-session salt is possible at this layer: two peers share nothing but the code before they connect, so the identifier they rendezvous on must be derivable from the code alone, which means the salt must be a public constant. The consequence stands as stated in R4: a relay that logs many channel identifiers can sweep the code space once against all of them rather than once per session. What v2 changes is the price of that sweep — one PBKDF2-HMAC-SHA512 stretch per candidate instead of one SHA-256 — and the app's soft warning on weak hand-typed codes (S6) plus the generator's 10-character, 31-symbol alphabet are the levers that keep the sweep expensive. A memory-hard KDF would raise the per-guess cost further but would not remove the amortization; see "PBKDF2 is not memory-hard" below for why it is not scheduled. Severity: low.
 
 ---
 
 ## What remains open
 
-Four findings from the August 2026 audit are open, all low-severity and contained within the stated threat model:
+One finding is open, disclosed as accepted by design:
 
-**S3 — unauthenticated `format` field** and **S11 — fixed KDF salt.** Both fixes are wire-breaking and batched into the next protocol revision (protocol v2).
-
-**S4 — unbounded relayed decompression** and **S5 — one vendored library's provenance.** Both scheduled for the next release.
+**S11 — fixed KDF salt.** Inherent to deriving a rendezvous identifier from a shared code; see Revision 4 → 5 above. Not scheduled for change.
 
 The following are tracked as longer-term hardening, not bugs in the current implementation:
 
@@ -146,7 +169,7 @@ The following are tracked as longer-term hardening, not bugs in the current impl
 
 **meta-tag CSP limitations.** frame-ancestors, report-uri, and sandbox are not honored in a `<meta>` CSP. Setting `frame-ancestors 'none'` via an HTTP response header at the static-hosting layer is recommended to prevent clickjacking.
 
-**PBKDF2 is not memory-hard.** Argon2id or scrypt would be more resistant to GPU-accelerated offline attacks against the session code, but neither is available in the browser's native crypto and vendoring a WASM implementation conflicts with the protocol-crypto no-dependencies rule; deferred pending native support. Raising the generated code length is the cheaper interim lever.
+**PBKDF2 is not memory-hard.** Argon2id or scrypt would be more resistant to GPU-accelerated offline guessing of the session code. **This is blocked on browser support, not scheduled:** neither is available in the browser's native crypto API (Web Crypto), and Keylay will not ship a hand-rolled or third-party (including WASM) implementation of a protocol primitive — the audit-equals-runtime guarantee depends on every cryptographic primitive coming from the browser. It becomes actionable only if browsers add a memory-hard KDF natively, and would then be a breaking protocol change with a migration plan. v0.9.0 moved the stretch to SHA-512 as the available interim step; raising the generated code length is the other lever.
 
 ---
 
@@ -154,8 +177,8 @@ The following are tracked as longer-term hardening, not bugs in the current impl
 
 This review is a thorough manual analysis with direct access to the source. It constitutes a detailed technical review but not a formal third-party security audit. No symbolic verification, fuzzing, or independent reproducibility testing was performed.
 
-The full technical report, including annotated code paths, severity ratings, and the complete finding history from Revisions 1–4, is published at [keylay.org/Keylay_Security_Review_v4.pdf](https://keylay.org/Keylay_Security_Review_v4.pdf).
+The full technical report, including annotated code paths, severity ratings, and the complete finding history from Revisions 1–5, is published at [keylay.org/Keylay_Security_Review_v5.pdf](https://keylay.org/Keylay_Security_Review_v5.pdf).
 
 ---
 
-*Review date: August 2026 (R4 — app v0.8.0. Resolved in v0.8.0: S1 URL code exposure, S2 exportable ephemeral key, S6 low-entropy-code warning. Disclosed open, scheduled: S3 unauthenticated `format` field and S11 fixed KDF salt (protocol v2); S4 unbounded relayed decompression and S5 vendored-library provenance (next release). security.html updated to match. Prior: R3 April 2026 — all then-open items resolved; R1/R2 April 2026.)*
+*Review date: September 2026 (R5 — app v0.9.0, protocol v2. Resolved in v0.9.0: S12 channel identifier invertible offline, S3 unauthenticated `format` field, S4 unbounded relayed decompression, S5 vendored-library provenance. Open, accepted by design: S11 fixed KDF salt. security.html updated to match.) Prior: August 2026 (R4 — app v0.8.0. Resolved in v0.8.0: S1 URL code exposure, S2 exportable ephemeral key, S6 low-entropy-code warning. Disclosed open, scheduled: S3 unauthenticated `format` field and S11 fixed KDF salt (protocol v2); S4 unbounded relayed decompression and S5 vendored-library provenance (next release). security.html updated to match. Prior: R3 April 2026 — all then-open items resolved; R1/R2 April 2026.)*
