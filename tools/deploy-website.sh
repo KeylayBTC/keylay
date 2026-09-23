@@ -20,7 +20,10 @@ SRC=/home/keylay/keylay-website
 WEBROOT=/home/keylay/public_html
 
 # -a archive, --delete mirror, exclude git plumbing and the app tree.
-RSYNC_OPTS=(-a --delete --exclude '.git' --exclude '.gitignore' --exclude '/app/')
+# Excluded from the mirror (never deleted, never overwritten):
+#   /app/    legacy location of a served index.html copy — the app deploy owns it, not this script
+#   /stats/  webalizer output, generated on the server by Apache's log analyzer; not in git
+RSYNC_OPTS=(-a --delete --exclude '.git' --exclude '.gitignore' --exclude '/app/' --exclude '/stats/')
 
 [ -d "$SRC/.git" ] || { echo "ERROR: $SRC is not a git checkout" >&2; exit 1; }
 [ -d "$WEBROOT" ]   || { echo "ERROR: web root $WEBROOT does not exist" >&2; exit 1; }
@@ -35,7 +38,7 @@ rsync "${RSYNC_OPTS[@]}" --dry-run --itemize-changes "$SRC"/ "$WEBROOT"/
 
 echo
 echo "Lines above beginning with 'deleting' are files that would be REMOVED."
-echo "There must be NOTHING under app/. If anything else there matters, stop."
+echo "app/ and stats/ are excluded and never touched. If anything ELSE listed as deleting matters, stop."
 read -r -p "Proceed with the real sync? [y/N] " reply
 case "$reply" in
   [yY]|[yY][eE][sS]) ;;
