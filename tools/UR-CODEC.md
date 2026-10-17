@@ -20,7 +20,10 @@ the `index.html` release hash rather than by `verify-vendored.mjs`.
   bytewords/CBOR) and known-good descriptor vectors: SHA-256/CRC-32 vs reference, bytewords
   byte-identical, `chooseFragments` exact over 700+ cases, bc-ur↔native decode with frame
   drops, byte-identical part strings, crypto-output/account → exact descriptor strings, and a
-  BIP-380 checksum vector (`raw(deadbeef)#89f8spxm`). 77 assertions.
+  BIP-380 checksum vector (`raw(deadbeef)#89f8spxm`). 81 assertions.
+- `verify-ur-sync.mjs` — confirms the inlined `window.KeylayUR` block in `index.html` is the
+  same code as `ur-native.mjs` (everything above the `export`), so the oracle test validates
+  what actually ships.
 
 Descriptor strings were cross-checked against `embit` (the descriptor library used by
 SeedSigner/Specter): `python3 -c "from embit.descriptor import Descriptor; Descriptor.from_string(d)"`.
@@ -30,7 +33,8 @@ SeedSigner/Specter): `python3 -c "from embit.descriptor import Descriptor; Descr
 cd tools
 npm init -y                       # once, if no package.json
 npm i -D @ngraveio/bc-ur cbor-sync @keystonehq/bc-ur-registry
-node ur-oracle-test.mjs           # expect: ALL PASS  pass=77 fail=0
+node ur-oracle-test.mjs           # expect: ALL PASS  pass=81 fail=0
+node verify-ur-sync.mjs           # expect: PASS
 ```
 
 ## Why native (not the bc-ur bundle)

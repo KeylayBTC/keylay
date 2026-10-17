@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Integrity and crypto checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Vendored libraries match upstream releases
+        run: node tools/verify-vendored.mjs
+
+      - name: Inlined UR codec matches tools/ur-native.mjs
+        run: node tools/verify-ur-sync.mjs
+
+      - name: Protocol v2 crypto
+        run: node tools/v2-crypto-test.mjs
+
+      - name: UR codec against bc-ur oracle
+        run: |
+          npm install --no-save @ngraveio/bc-ur cbor-sync
+          node tools/ur-oracle-test.mjs
+
+  e2e:
+    name: End-to-end (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Install relay dependencies
+        run: npm install
+
+      - name: Install Playwright
+        working-directory: tests
+        run: |
+          npm install
+          npx playwright install --with-deps ${{ matrix.browser }}
+
+      # Runs against the local relay started by tests/dev-server.js; the
+      # "connects to the local relay" test fails if the app falls back to
+      # wss://app.keylay.org.
+      - name: Run tests
+        working-directory: tests
+        run: npm test -- --browser=${{ matrix.browser }}

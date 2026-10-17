@@ -4,8 +4,11 @@
   <meta charset="UTF-8">
   <!--
     Content-Security-Policy (Option 2 — Keylay v1).
-    connect-src is pinned to same-origin plus the canonical hosted relay; a
-    self-hoster replaces the wss:// host below with their own.
+    connect-src is pinned to same-origin, the local relay (WS_LOCAL_URL, tried
+    first when the page is served from localhost), and the canonical hosted
+    relay; a self-hoster replaces the wss:// host below with their own.
+    upgrade-insecure-requests is deliberately omitted: WebKit applies it to
+    ws://localhost and rewrites the local relay URL to wss://, which fails.
 
     XSS defense in depth, open work: the script-src allowlist currently uses
     'unsafe-inline' because the app ships as a single-file inline script
@@ -19,7 +22,7 @@
     those belong in an HTTP header at the static-hosting layer. See
     DEPLOYMENT.md if/when that's set up.
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' wss://app.keylay.org; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'; worker-src 'self' blob:; upgrade-insecure-requests">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' ws://localhost:8080 wss://app.keylay.org; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; manifest-src 'self'; worker-src 'self' blob:">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Keylay Encrypted QR Relay</title>
   <style>
