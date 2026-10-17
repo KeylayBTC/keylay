@@ -1,7 +1,9 @@
 // @ts-check
-const { defineConfig } = require('@playwright/test');
-
-module.exports = defineConfig({
+// Plain object, not defineConfig(): this file sits at the repo root, but
+// @playwright/test is installed under tests/node_modules, so a require() here
+// cannot resolve it. The JSDoc type keeps editor checking.
+/** @type {import('@playwright/test').PlaywrightTestConfig} */
+module.exports = {
   testDir: './tests',
   timeout: 20000,
   expect: { timeout: 5000 },
@@ -27,4 +29,4 @@ module.exports = defineConfig({
     reuseExistingServer: false,
     timeout: 10000,
   },
-});
+};
