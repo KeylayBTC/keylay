@@ -46,6 +46,21 @@ test.describe('Two-peer session', () => {
     await ctx.close();
   });
 
+  test('connects to the local relay, not the hosted fallback', async ({ browser }) => {
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+
+    await page.goto('/');
+    await page.fill('#codeInput', TEST_CODE + '-local');
+    await page.click('#joinChannelBtn');
+
+    // dev-server.js runs the relay on :8080. If the CSP blocks it, the app
+    // falls back to wss://app.keylay.org and shows the amber warning instead.
+    await expect(page.locator('#connectionStatus')).toContainText('Local Server', { timeout: 5000 });
+
+    await ctx.close();
+  });
+
   test('second joiner gets Receiver role (Claim Sender shown)', async ({ browser }) => {
     const ctx1 = await browser.newContext();
     const ctx2 = await browser.newContext();
