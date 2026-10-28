@@ -6,6 +6,23 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ---
 
+## [0.9.1] — 2026-10-27
+
+Relay-only hardening release. `server.js` changed; the client is unchanged apart from
+the version number. No protocol change: 0.9.0 and 0.9.1 clients interoperate.
+
+### Security (relay)
+
+- **Connection error handling.** Each client connection now handles its own socket
+  errors, so a malformed frame closes only that connection.
+- **Session isolation.** A disconnect now updates only the session that connection
+  belonged to.
+- **Join validation and limits.** Session codes must match the client's 32-character
+  channel format; one session per connection; connections that do not join within
+  30 seconds are closed; IPv6 clients are counted per /64 for the per-address limit.
+
+---
+
 ## [0.9.0] — 2026-09-23
 
 Protocol **v2** — this is a **wire-breaking** release. A v2 client cannot complete a

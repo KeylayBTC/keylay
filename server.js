@@ -6,6 +6,17 @@
 // Rate, size, connection, and lifetime limits are enforced here. Numbers are
 // tunable via the named constants below. If you adjust them, update
 // outputs/security_review_summary.md so the thresholds stay documented.
+//
+// 2026-10 relay hotfix (external report, findings #1-#3):
+//   #1  every client socket has an 'error' listener, so a malformed frame
+//       (oversized, bad UTF-8, reserved bits) closes that one socket instead
+//       of throwing and taking the whole process down.
+//   #2  each socket remembers the one session it joined; on close, only that
+//       session is updated and only its members get 'peer_left'.
+//   #3  channel codes must be exactly 32 lowercase hex characters; a socket
+//       may belong to one session only; a socket that has not joined within
+//       JOIN_DEADLINE_MS is closed; IPv6 clients are counted per /64 for the
+//       per-IP cap.
 const WebSocket = require('ws');
 
 // ============================================================
@@ -30,6 +41,14 @@ const MAX_RECEIVERS_PER_SESSION = 1;     // exactly two peers per session: 1 sen
 // Session lifetime.
 const SESSION_IDLE_MS = 15 * 60 * 1000;  // no data for 15 min → close
 const SESSION_MAX_MS = 60 * 60 * 1000;   // hard cap from first join → close
+
+// A socket must send a valid 'join' (or 'claim') this soon after connecting,
+// or it is closed. The client joins immediately on open, so 30 s is generous.
+const JOIN_DEADLINE_MS = 30 * 1000;
+
+// Channel codes are the client's derived channel hash: SHA-256 output
+// truncated to 32 lowercase hex characters. Anything else is rejected.
+const CHANNEL_CODE_RE = /^[0-9a-f]{32}$/;
 
 // Liveness ping/pong. Independent of idle — ping is "is the socket alive",
 // idle is "has real data flowed". A missed pong is enforced by the next
@@ -93,8 +112,37 @@ function remoteIp(req) {
   return req.socket.remoteAddress || 'unknown';
 }
 
+// Key used for the per-IP connection cap. IPv4 (including IPv4-mapped IPv6)
+// counts per address; IPv6 counts per /64, because a single host or ISP
+// customer typically controls a whole /64 and could otherwise rotate through
+// addresses to evade the cap.
+function ipKey(ip) {
+  if (!ip || ip === 'unknown') return 'unknown';
+  let a = String(ip).trim().toLowerCase();
+  if (a.startsWith('::ffff:') && a.slice(7).includes('.')) return a.slice(7);
+  if (!a.includes(':')) return a;                 // IPv4
+  const zone = a.indexOf('%');
+  if (zone >= 0) a = a.slice(0, zone);            // drop zone id (fe80::1%eth0)
+  // Expand '::' so the first four hextets can be read reliably.
+  let head = a, tail = '';
+  const dbl = a.indexOf('::');
+  if (dbl >= 0) { head = a.slice(0, dbl); tail = a.slice(dbl + 2); }
+  const h = head ? head.split(':') : [];
+  const t = tail ? tail.split(':') : [];
+  if (t.length && t[t.length - 1].includes('.')) t.splice(t.length - 1, 1, '0', '0'); // embedded IPv4
+  const missing = Math.max(0, 8 - h.length - t.length);
+  const full = dbl >= 0 ? [...h, ...Array(missing).fill('0'), ...t] : h;
+  if (full.length < 4) return a.toLowerCase();
+  return full.slice(0, 4).map(x => (parseInt(x, 16) || 0).toString(16)).join(':') + '::/64';
+}
+
+function isValidCode(code) {
+  return typeof code === 'string' && CHANNEL_CODE_RE.test(code);
+}
+
 // Truncate an IP to its /16 (IPv4) or /32 (IPv6) prefix. Used for log lines
-// only — full IPs stay in the in-memory ipConnections map for the per-IP cap
+// only — the per-IP cap keys (full IPv4 address, IPv6 /64) stay in the in-memory
+// ipConnections map
 // and never leave the process. Truncation is what makes the public privacy
 // claim ("no full IPs logged") true. See outputs/rotate-logs.js for the
 // cron-side aggregation that consumes these prefixes.
@@ -129,6 +177,8 @@ function closeSession(code, reason) {
   };
   notify(session.sender);
   session.receivers.forEach(notify);
+  if (session.sender) session.sender._sessionCode = null;
+  session.receivers.forEach((r) => { r._sessionCode = null; });
   if (session.idleTimer) clearTimeout(session.idleTimer);
   if (session.maxTimer) clearTimeout(session.maxTimer);
   sessions.delete(code);
@@ -161,8 +211,17 @@ function armSessionTimers(code) {
 
 wss.on('connection', function connection(ws, req) {
   const ip = remoteIp(req);
+  const ipk = ipKey(ip);
 
   const prefix = truncateIp(ip);
+
+  // [#1] Register the error listener FIRST, before any early return. With no
+  // 'error' listener, an 'error' event on this socket (oversized frame,
+  // invalid UTF-8, reserved bits set) would throw and crash the process.
+  // ws closes the socket itself after emitting 'error'; 'close' cleans up.
+  ws.on('error', (err) => {
+    log(`socket error from ${prefix}: ${(err && (err.code || err.message)) || 'unknown'}`);
+  });
 
   // Connection admission control
   if (globalConnections >= MAX_GLOBAL_CONNECTIONS) {
@@ -171,7 +230,7 @@ wss.on('connection', function connection(ws, req) {
     ws.close(1013, 'Server at capacity');
     return;
   }
-  const ipCount = ipConnections.get(ip) || 0;
+  const ipCount = ipConnections.get(ipk) || 0;
   if (ipCount >= MAX_CONNECTIONS_PER_IP) {
     try { ws.send(JSON.stringify({ type: 'status', message: 'Too many connections from your address' })); } catch {}
     log(`refused per-ip from ${prefix}`);
@@ -179,7 +238,19 @@ wss.on('connection', function connection(ws, req) {
     return;
   }
   globalConnections++;
-  ipConnections.set(ip, ipCount + 1);
+  ipConnections.set(ipk, ipCount + 1);
+
+  // [#2/#3] The one session this socket belongs to (set on join/claim).
+  ws._sessionCode = null;
+
+  // [#3] Join deadline: a socket that never joins is closed, so it cannot
+  // hold a connection slot indefinitely by answering pings.
+  ws._joinTimer = setTimeout(() => {
+    if (!ws._sessionCode) {
+      log(`join timeout from ${prefix}`);
+      try { ws.close(1008, 'Join timeout'); } catch {}
+    }
+  }, JOIN_DEADLINE_MS);
 
   // Per-connection rate bucket
   ws._rateTokens = RATE_BUCKET_CAPACITY;
@@ -227,12 +298,22 @@ wss.on('connection', function connection(ws, req) {
 
   ws.on('close', function() {
     log(`disconnected from ${prefix}`);
+    if (ws._joinTimer) { clearTimeout(ws._joinTimer); ws._joinTimer = null; }
     globalConnections = Math.max(0, globalConnections - 1);
-    const n = (ipConnections.get(ip) || 1) - 1;
-    if (n <= 0) ipConnections.delete(ip); else ipConnections.set(ip, n);
+    const n = (ipConnections.get(ipk) || 1) - 1;
+    if (n <= 0) ipConnections.delete(ipk); else ipConnections.set(ipk, n);
 
-    // Remove this client from all sessions
-    sessions.forEach((session, code) => {
+    // [#2] Update only the session this socket actually belonged to. The old
+    // code walked every session and sent 'peer_left' to all of them, so one
+    // anonymous connect-and-disconnect reset every pair on the relay.
+    const code = ws._sessionCode;
+    ws._sessionCode = null;
+    if (!code) return;
+    const session = sessions.get(code);
+    if (!session) return;
+    const wasMember = session.sender === ws || session.receivers.has(ws);
+    if (!wasMember) return;
+    {   // (kept as a block so the diff against v0.9.0 stays readable)
       if (session.sender === ws) {
         session.sender = null;
         // Promote a receiver to sender if available
@@ -262,7 +343,7 @@ wss.on('connection', function connection(ws, req) {
         if (session.maxTimer) clearTimeout(session.maxTimer);
         sessions.delete(code);
       }
-    });
+    }
   });
 });
 
@@ -291,29 +372,69 @@ wss.on('close', () => clearInterval(livenessInterval));
 // Message handlers
 // ============================================================
 
+// [#3] Shared admission check for join/claim. Returns true if the socket may
+// act on `code`; otherwise reports and (for bad input) closes the socket.
+function admitCode(ws, code, what) {
+  if (!isValidCode(code)) {
+    try { ws.send(JSON.stringify({ type: 'status', message: 'Invalid session code' })); } catch {}
+    log(`refused ${what}: invalid code`);
+    try { ws.close(1008, 'Invalid code'); } catch {}
+    return false;
+  }
+  if (ws._sessionCode && ws._sessionCode !== code) {
+    try { ws.send(JSON.stringify({ type: 'status', message: 'Already in a session on this connection' })); } catch {}
+    log(`refused ${what}: second session on one socket`);
+    try { ws.close(1008, 'One session per connection'); } catch {}
+    return false;
+  }
+  return true;
+}
+
+function bindSocketToSession(ws, code) {
+  ws._sessionCode = code;
+  if (ws._joinTimer) { clearTimeout(ws._joinTimer); ws._joinTimer = null; }
+}
+
 function handleJoin(ws, code) {
+  if (!admitCode(ws, code, 'join')) return;
   if (!sessions.has(code)) {
     sessions.set(code, { sender: ws, receivers: new Set(), idleTimer: null, maxTimer: null, createdAt: 0 });
+    bindSocketToSession(ws, code);
     armSessionTimers(code);
     ws.send(JSON.stringify({ type: 'role', role: 'sender' }));
     log('role assigned: sender');
   } else {
     const session = sessions.get(code);
+    if (session.sender === ws || session.receivers.has(ws)) {
+      log('join noop: already a member');   // repeated join on the same socket
+      return;
+    }
     if (session.sender && session.receivers.size >= MAX_RECEIVERS_PER_SESSION) {
       try { ws.send(JSON.stringify({ type: 'status', message: 'Session is full — only two peers allowed' })); } catch {}
       ws.close();
       log('refused full session');
       return;
     }
+    // Defensive: a session should never exist without a sender.
+    if (!session.sender) {
+      session.sender = ws;
+      bindSocketToSession(ws, code);
+      ws.send(JSON.stringify({ type: 'role', role: 'sender' }));
+      log('role assigned: sender (vacant)');
+      return;
+    }
     session.receivers.add(ws);
+    bindSocketToSession(ws, code);
     ws.send(JSON.stringify({ type: 'role', role: 'receiver' }));
     log('role assigned: receiver');
   }
 }
 
 function handleClaimSender(ws, code) {
+  if (!admitCode(ws, code, 'claim')) return;
   if (!sessions.has(code)) {
     sessions.set(code, { sender: ws, receivers: new Set(), idleTimer: null, maxTimer: null, createdAt: 0 });
+    bindSocketToSession(ws, code);
     armSessionTimers(code);
     ws.send(JSON.stringify({ type: 'role', role: 'sender' }));
     log('role claimed: sender (new session)');
@@ -348,6 +469,7 @@ function handleClaimSender(ws, code) {
 }
 
 function handleDataTransmission(ws, code, payload, format, encrypted, counter) {
+  if (!isValidCode(code) || ws._sessionCode !== code) return;
   const session = sessions.get(code);
   if (!session) return;
   if (session.sender !== ws && !session.receivers.has(ws)) return; // drop messages from non-members
@@ -372,6 +494,7 @@ function handleDataTransmission(ws, code, payload, format, encrypted, counter) {
 }
 
 function handleHello(ws, code, pubkey, sig) {
+  if (!isValidCode(code) || ws._sessionCode !== code) return;
   const session = sessions.get(code);
   if (!session) return;
   if (session.sender !== ws && !session.receivers.has(ws)) return; // drop hellos from non-members
@@ -388,4 +511,4 @@ function handleHello(ws, code, pubkey, sig) {
   log('forwarded hello to ' + forwarded + ' peer(s)');
 }
 
-console.log(`Limits: payload ${MAX_PAYLOAD_BYTES/1024}KB, rate ${RATE_REFILL_PER_SEC}/s (burst ${RATE_BUCKET_CAPACITY}), per-IP ${MAX_CONNECTIONS_PER_IP}, global ${MAX_GLOBAL_CONNECTIONS}, idle ${SESSION_IDLE_MS/60000}m, max ${SESSION_MAX_MS/60000}m`);
+console.log(`Limits: payload ${MAX_PAYLOAD_BYTES/1024}KB, rate ${RATE_REFILL_PER_SEC}/s (burst ${RATE_BUCKET_CAPACITY}), per-IP ${MAX_CONNECTIONS_PER_IP} (IPv6 per /64), global ${MAX_GLOBAL_CONNECTIONS}, idle ${SESSION_IDLE_MS/60000}m, max ${SESSION_MAX_MS/60000}m, join deadline ${JOIN_DEADLINE_MS/1000}s`);
