@@ -156,7 +156,7 @@ printf '  2. Deploy (tag-checkout — "git pull" fails on the server, it is deta
 printf '       ssh <server>\n'
 printf '       sudo -u keylay git -C /home/keylay/relay fetch --tags\n'
 printf '       sudo -u keylay git -C /home/keylay/relay checkout %s\n' "$TAG"
-printf '       sudo systemctl restart keylay      # ONLY if server.js changed this release\n'
+printf '       sudo -u keylay pm2 restart keylay  # ONLY if server.js changed this release\n'
 printf '  3. Verify the live app serves the exact release:\n'
 printf '       curl -s https://app.keylay.org/ | sha256sum   # must print %s\n' "$H_INDEX"
 printf '  4. Upload website/verify.html (and any changed pages) to keylay.org\n'

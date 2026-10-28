@@ -22,7 +22,7 @@ Do these in order. Each step is expanded in the sections below; this list exists
    ssh <server>
    sudo -u keylay git -C /home/keylay/relay fetch --tags
    sudo -u keylay git -C /home/keylay/relay checkout vX.Y.Z
-   sudo systemctl restart keylay        # ONLY if server.js changed this release
+   sudo -u keylay pm2 restart keylay    # ONLY if server.js changed this release (relay runs under pm2, not a keylay systemd unit)
    ```
 6. **Verify live == release:**
    ```bash
@@ -94,7 +94,10 @@ sudo -u keylay git -C /home/keylay/relay checkout v<version>   # e.g. v0.8.0 —
 The static file is served by the reverse proxy reading from disk, so the checkout alone publishes the new `index.html` — no restart needed for a client-only release. Restart the relay **only when `server.js` changed** this release (restarting drops any live sessions):
 
 ```bash
-sudo systemctl restart keylay && systemctl status keylay   # only if server.js changed
+sudo -u keylay pm2 restart keylay && sudo -u keylay pm2 status   # only if server.js changed
+sudo -u keylay pm2 logs keylay --lines 20 --nostream            # check the startup lines
+# The relay runs under pm2 as user keylay; pm2 itself is started at boot by the
+# pm2-keylay.service systemd unit. There is no keylay.service on this server.
 ```
 
 Verify the live app is the release, from any machine:
